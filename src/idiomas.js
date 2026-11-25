@@ -25,6 +25,13 @@ function detectarIdioma(lista) {
 }
 function _idiomaInicial() {
   if (PREFS.idioma && IDIOMAS.some((i) => i.id === PREFS.idioma)) return PREFS.idioma;
+  // no Poki, o idioma vem do próprio Poki (PokiSDK.getLanguage, recomendação do guia deles)
+  try {
+    if (typeof PokiSDK !== 'undefined' && PokiSDK.getLanguage) {
+      const p = PokiSDK.getLanguage();
+      if (p) return detectarIdioma([p]);
+    }
+  } catch (e) { /* sem Poki: segue para o navegador */ }
   const nav = typeof navigator !== 'undefined' ? (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]) : [];
   return detectarIdioma(nav);
 }

@@ -88,3 +88,19 @@ test('RN-61: partida em turco abre cartas, baú e tela final sem erro', async ()
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('RN-61: no Poki, o idioma vem de PokiSDK.getLanguage() (a escolha do jogador ainda vale mais)', async () => {
+  const j = await abrirJogo({ idioma: 'pt-BR' });
+  try {
+    await esperarCena(j.pagina, 'Hangar');
+    const r = await G(j.pagina, () => {
+      window.PokiSDK = { getLanguage: () => 'it' };
+      PREFS.idioma = null; const semEscolha = _idiomaInicial();
+      PREFS.idioma = 'de'; const comEscolha = _idiomaInicial();
+      window.PokiSDK = { getLanguage: () => 'ja' }; PREFS.idioma = null; const semTraducao = _idiomaInicial();
+      delete window.PokiSDK;
+      return { semEscolha, comEscolha, semTraducao };
+    });
+    assert.deepEqual(r, { semEscolha: 'it', comEscolha: 'de', semTraducao: 'en' });
+  } finally { await j.fechar(); }
+});
