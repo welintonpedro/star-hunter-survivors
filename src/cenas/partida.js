@@ -236,19 +236,37 @@ class GameScene extends Phaser.Scene {
     else if (o.kind === 'heal') this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3);
     else if (o.kind === 'gold') this.runCredits += 25 * this.gal.rewardMult;
   }
-  optionText(o, i) {
-    if (o.kind === 'heal') return '[' + (i + 1) + '] KIT DE REPARO\n\nRecupera 30% da vida';
-    if (o.kind === 'gold') return '[' + (i + 1) + '] SACO DE CRÉDITOS\n\n+' + fmt(25 * this.gal.rewardMult) + ' créditos';
+  // Carta de subir de nível: desenho grande, nome, efeito curto e nível. Sem dica de combo (RN-24, RN-25).
+  criarCarta(o, i, x, y) {
+    const D = 202, fixo = (obj) => obj.setScrollFactor(0).setDepth(D + 1);
+    let icone, escala = 1.6, nome, efeito, etiqueta, nivel = 0, max = 0, cor = 0x3f3f46, borda = 0xa5b4fc;
     if (o.kind === 'weapon') {
       const d = WEAPONS[o.id];
-      return '[' + (i + 1) + '] ' + (o.level === 1 ? 'ARMA NOVA' : 'ARMA  Nv ' + o.level) + '\n' + d.name + '\n\n' + d.desc[o.level - 1] +
-        '\n\nCombo: + ' + PASSIVES[d.evo].name;
+      icone = iconeDe(o.id); nome = d.name; efeito = d.desc[o.level - 1]; nivel = o.level; max = MAX_WEAPON_LEVEL;
+      etiqueta = d.poder ? 'PODER DA NAVE' : o.level === 1 ? 'ARMA NOVA' : 'ARMA';
+      cor = d.poder ? 0x422006 : 0x1e1b4b; borda = d.poder ? 0xfacc15 : 0x818cf8;
+    } else if (o.kind === 'passive') {
+      const d = PASSIVES[o.id];
+      icone = iconeDe(o.id); nome = d.name; efeito = d.desc; nivel = o.level; max = d.max;
+      etiqueta = o.level === 1 ? 'ITEM NOVO' : 'ITEM'; cor = 0x042f2e; borda = 0x2dd4bf;
+    } else if (o.kind === 'heal') {
+      icone = 'heal'; escala = 2.6; nome = 'Kit de Reparo'; efeito = '+30% de vida'; etiqueta = 'CURA';
+    } else {
+      icone = 'coin'; escala = 2.6; nome = 'Créditos'; efeito = '+' + fmt(25 * this.gal.rewardMult); etiqueta = 'BÔNUS';
     }
-    const d = PASSIVES[o.id];
-    const cw = comboWeaponFor(o.id);
-    const owned = cw && this.hasWeapon(cw);
-    return '[' + (i + 1) + '] ' + (o.level === 1 ? 'ITEM NOVO' : 'ITEM  Nv ' + o.level) + '\n' + d.name + '\n\n' + d.desc +
-      (cw ? '\n\n' + (owned ? '★ COMBO com ' : 'Combo: ') + WEAPONS[cw].name : '');
+    const btn = makeButton(this, x, y, 220, 270, '', () => this.modalPick(i), { fixed: true, depth: D, color: cor, stroke: borda });
+    const parts = [btn];
+    parts.push(fixo(this.add.text(x - 98, y - 125, String(i + 1), { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8', fontStyle: 'bold' })));
+    parts.push(fixo(this.add.text(x, y - 112, etiqueta, { fontFamily: 'Arial', fontSize: '12px', color: '#fde68a', fontStyle: 'bold' }).setOrigin(0.5)));
+    parts.push(fixo(this.add.image(x, y - 45, icone).setScale(escala)));
+    parts.push(fixo(this.add.text(x, y + 22, nome, { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: 200 } }).setOrigin(0.5)));
+    parts.push(fixo(this.add.text(x, y + 58, efeito, { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1', align: 'center', wordWrap: { width: 196 } }).setOrigin(0.5)));
+    // quadradinhos de nível: cheios até o nível que a carta dá
+    for (let k = 0; k < max; k++) {
+      const px = x + (k - (max - 1) / 2) * 18;
+      parts.push(fixo(this.add.rectangle(px, y + 108, 12, 12, k < nivel ? 0xfacc15 : 0x334155).setStrokeStyle(1, 0x000000)));
+    }
+    return parts;
   }
 
   // ---------- CONTROLES ----------
@@ -363,34 +381,41 @@ class GameScene extends Phaser.Scene {
     this.invItems = [];
   }
 
+  // Painel no canto: ícones das armas (1ª linha) e itens (2ª linha) com o nível,
+  // e embaixo as linhas de combo feitas nesta partida: [arma] + [item] = [evolução] (RN-29)
   refreshInventory() {
     if (!this.invItems) return;
     this.invItems.forEach((o) => o.destroy());
     this.invItems = [];
-    const D = 150, y = 78;
-    const slot = (x, color, abbr, lvl, evolved) => {
-      this.invItems.push(this.add.rectangle(x, y, 26, 26, color, evolved ? 1 : 0.85).setStrokeStyle(2, evolved ? 0xffffff : 0x000000).setScrollFactor(0).setDepth(D));
-      this.invItems.push(this.add.text(x, y - 2, abbr, { fontFamily: 'Arial', fontSize: '10px', color: '#000000', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 1));
-      this.invItems.push(this.add.text(x + 9, y + 9, evolved ? '★' : String(lvl), { fontFamily: 'Arial', fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2));
+    const D = 150, y = 80, PASSO = 32, fixo = (o, d) => { this.invItems.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+    const icone = (x, yy, chave, txt) => {
+      fixo(this.add.rectangle(x, yy, 28, 28, 0x000000, 0.55).setStrokeStyle(1, 0x475569));
+      fixo(this.add.image(x, yy, chave).setDisplaySize(26, 26), 1);
+      if (txt) fixo(this.add.text(x + 10, yy + 9, txt, { fontFamily: 'Arial', fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5), 2);
     };
     for (let i = 0; i < MAX_WEAPONS; i++) {
-      const w = this.weapons[i], x = 30 + i * 30;
-      if (w) slot(x, WEAPONS[w.id].color, WEAPONS[w.id].abbr, w.level, w.evolved);
-      else this.invItems.push(this.add.rectangle(x, y, 26, 26, 0x000000, 0.4).setStrokeStyle(1, 0x475569).setScrollFactor(0).setDepth(D));
+      const w = this.weapons[i], x = 30 + i * PASSO;
+      if (w) icone(x, y, iconeDe(w.id, w.evolved), w.evolved ? '★' : String(w.level));
+      else fixo(this.add.rectangle(x, y, 28, 28, 0x000000, 0.35).setStrokeStyle(1, 0x334155));
     }
     const pk = Object.keys(this.passives);
     for (let i = 0; i < MAX_PASSIVES; i++) {
-      const id = pk[i], x = 30 + i * 30;
-      if (id) {
-        const x2 = x, y2 = y + 30;
-        this.invItems.push(this.add.rectangle(x2, y2, 26, 26, PASSIVES[id].color, 0.85).setStrokeStyle(2, 0x000000).setScrollFactor(0).setDepth(D));
-        this.invItems.push(this.add.text(x2, y2 - 2, PASSIVES[id].abbr, { fontFamily: 'Arial', fontSize: '10px', color: '#000000', fontStyle: 'bold' }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 1));
-        this.invItems.push(this.add.text(x2 + 9, y2 + 9, String(this.passives[id]), { fontFamily: 'Arial', fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2));
-      } else {
-        this.invItems.push(this.add.rectangle(x, y + 30, 26, 26, 0x000000, 0.4).setStrokeStyle(1, 0x475569).setScrollFactor(0).setDepth(D));
-      }
+      const id = pk[i], x = 30 + i * PASSO;
+      if (id) icone(x, y + PASSO, iconeDe(id), String(this.passives[id]));
+      else fixo(this.add.rectangle(x, y + PASSO, 28, 28, 0x000000, 0.35).setStrokeStyle(1, 0x334155));
     }
+    // combos desta partida
+    this.weapons.filter((w) => w.evolved).forEach((w, k) => {
+      const yy = y + PASSO * 2 + 8 + k * 30, d = WEAPONS[w.id];
+      fixo(this.add.rectangle(78, yy, 132, 28, 0x422006, 0.75).setStrokeStyle(1, 0xfacc15));
+      fixo(this.add.image(30, yy, iconeDe(w.id)).setDisplaySize(22, 22), 1);
+      fixo(this.add.text(48, yy, '+', { fontFamily: 'Arial', fontSize: '15px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 1);
+      fixo(this.add.image(66, yy, iconeDe(d.evo)).setDisplaySize(22, 22), 1);
+      fixo(this.add.text(85, yy, '=', { fontFamily: 'Arial', fontSize: '15px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 1);
+      fixo(this.add.image(106, yy, iconeDe(w.id, true)).setDisplaySize(24, 24), 1);
+    });
   }
+
 
   updateHUD() {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
@@ -1526,15 +1551,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#fde047', stroke: '#000000', strokeThickness: 5
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     const n = options.length;
-    options.forEach((o, i) => {
-      const isCombo = o.kind === 'passive' && comboWeaponFor(o.id) && this.hasWeapon(comboWeaponFor(o.id));
-      const color = o.kind === 'weapon' ? 0x312e81 : o.kind === 'passive' ? 0x134e4a : 0x3f3f46;
-      parts.push(makeButton(this, W / 2 + (i - (n - 1) / 2) * 260, H / 2 + 10, 240, 220, this.optionText(o, i),
-        () => this.modalPick(i), { fixed: true, depth: 202, size: 15, color, stroke: isCombo ? 0xfacc15 : 0xa5b4fc, wrap: true }));
-    });
-    parts.push(this.add.text(W / 2, H - 60, 'Combo = arma no nível ' + MAX_WEAPON_LEVEL + ' + o item certo. Abra um baú de subchefe para evoluir!', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#cbd5e1'
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
+    options.forEach((o, i) => parts.push(...this.criarCarta(o, i, W / 2 + (i - (n - 1) / 2) * 250, H / 2 + 20)));
     if (this.auto) parts.push(this.add.text(W / 2, H - 36, 'Piloto automático vai escolher sozinho...', { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8' }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     this.modal = { kind: 'level', options, parts };
     if (this.auto) this.scheduleAutoPick();
@@ -1547,13 +1564,13 @@ class GameScene extends Phaser.Scene {
     let title = 'BAÚ ABERTO!';
     let color = '#fde047';
     const evo = this.evolvable();
+    let combo = null;
     if (evo.length) {
       const w = evo[0];
       w.evolved = true;
+      combo = w.id;
       title = 'COMBO!';
       color = '#f0abfc';
-      lines.push(WEAPONS[w.id].name + ' + ' + PASSIVES[WEAPONS[w.id].evo].name);
-      lines.push('evoluiu para');
       lines.push('★ ' + WEAPONS[w.id].evoName + ' ★');
       this.cameras.main.flash(300, 240, 171, 252);
     } else {
@@ -1576,7 +1593,16 @@ class GameScene extends Phaser.Scene {
     parts.push(this.add.rectangle(W / 2, H / 2, 460, 260, 0x1c1917).setStrokeStyle(3, 0xfacc15).setScrollFactor(0).setDepth(201));
     parts.push(this.add.image(W / 2, H / 2 - 95, 'chest').setScale(1.5).setScrollFactor(0).setDepth(202));
     parts.push(this.add.text(W / 2, H / 2 - 50, title, { fontFamily: 'Arial Black, Arial', fontSize: '26px', color, stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-    parts.push(this.add.text(W / 2, H / 2 + 15, lines.join('\n'), { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
+    if (combo) {
+      // [arma] + [item] = [evolução], com os mesmos ícones das cartas e do painel
+      const d = WEAPONS[combo], fixo = (o) => o.setScrollFactor(0).setDepth(202);
+      [[W / 2 - 110, iconeDe(combo)], [W / 2, iconeDe(d.evo)], [W / 2 + 110, iconeDe(combo, true)]].forEach(([x, k]) =>
+        parts.push(fixo(this.add.image(x, H / 2 + 5, k).setDisplaySize(56, 56))));
+      ['+', '='].forEach((t, k) => parts.push(fixo(this.add.text(W / 2 - 55 + k * 110, H / 2 + 5, t, { fontFamily: 'Arial Black, Arial', fontSize: '30px', color: '#fde047' }).setOrigin(0.5))));
+      parts.push(fixo(this.add.text(W / 2, H / 2 + 52, lines.join('\n'), { fontFamily: 'Arial', fontSize: '17px', color: '#f5d0fe', align: 'center' }).setOrigin(0.5)));
+    } else {
+      parts.push(this.add.text(W / 2, H / 2 + 15, lines.join('\n'), { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
+    }
     parts.push(makeButton(this, W / 2, H / 2 + 95, 160, 34, 'CONTINUAR', () => this.modalPick(0), { fixed: true, depth: 203, color: 0x166534, stroke: 0x4ade80 }));
     this.modal = { kind: 'chest', parts };
     if (this.auto) this.scheduleAutoPick();

@@ -39,6 +39,9 @@ class HangarScene extends Phaser.Scene {
       this.keep(this.add.rectangle(x, y, 225, 245, 0x0f172a, 0.92).setStrokeStyle(2, owned ? 0x60a5fa : 0x334155));
       const spr = this.keep(this.add.image(x, y - 78, 'ship_' + s.id).setScale(1.2));
       if (!owned) spr.setTint(0x475569);
+      // ícone do poder exclusivo, no canto do card (o mesmo das cartas e do painel)
+      this.keep(this.add.rectangle(x + 82, y - 92, 40, 40, 0x422006).setStrokeStyle(2, 0xfacc15));
+      this.keep(this.add.image(x + 82, y - 92, iconeDe(s.start)).setDisplaySize(34, 34));
       this.keep(this.add.text(x, y - 28, s.name, { fontFamily: 'Arial', fontSize: '20px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
       this.keep(this.add.text(x, y - 6, gal.name + (SAVE.cleared[s.galaxy] ? '  (conquistada)' : ''), {
         fontFamily: 'Arial', fontSize: '12px', color: SAVE.cleared[s.galaxy] ? '#86efac' : '#94a3b8'

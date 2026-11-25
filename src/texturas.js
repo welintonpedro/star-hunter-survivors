@@ -62,3 +62,29 @@ function nebulaTexture(scene, key) {
   tex.refresh();
 }
 
+
+// Ícone de arma/item (48×48) e a versão evoluída: mesmo desenho com moldura dourada e brilho
+function iconeTexturas(scene) {
+  Object.entries(ICONES).forEach(([id, ic]) => {
+    pixelTexture(scene, 'icone_' + id, ic.arte, ic.cores, 4);
+    const tex = scene.textures.createCanvas('icone_evo_' + id, 56, 56);
+    const ctx = tex.getContext();
+    ctx.fillStyle = '#422006'; ctx.fillRect(0, 0, 56, 56);
+    ctx.fillStyle = '#facc15'; ctx.fillRect(0, 0, 56, 3); ctx.fillRect(0, 53, 56, 3); ctx.fillRect(0, 0, 3, 56); ctx.fillRect(53, 0, 3, 56);
+    ctx.fillStyle = '#fef08a'; [[3, 3], [49, 3], [3, 49], [49, 49]].forEach((p) => ctx.fillRect(p[0], p[1], 4, 4));
+    ic.arte.forEach((linha, y) => {
+      for (let x = 0; x < linha.length; x++) {
+        const ch = linha[x];
+        if (ch === '.' || !ic.cores[ch]) continue;
+        ctx.fillStyle = ch === 'a' ? '#78350f' : ic.cores[ch];
+        ctx.fillRect(4 + x * 4, 4 + y * 4, 4, 4);
+      }
+    });
+    tex.refresh();
+  });
+  pixelTexture(scene, 'icone_oculto', ICONE_OCULTO, { a: '#1e293b', b: '#64748b' }, 4);
+}
+// Chave da textura do ícone de uma arma (evoluída ou não) ou item
+function iconeDe(id, evoluida) {
+  return (evoluida ? 'icone_evo_' : 'icone_') + id;
+}

@@ -16,6 +16,7 @@ class BootScene extends Phaser.Scene {
         [[40, 45], [70, 65], [60, 35], [50, 80], [80, 45]].forEach((p) => gr.fillEllipse(p[0], p[1], 14, 18));
       });
     });
+    iconeTexturas(this);   // ícones de armas, poderes e itens (src/dados/icones.js)
     // os 30 inimigos e os filhotes (src/dados/inimigos.js)
     Object.entries(INIMIGOS).forEach(([id, d]) => pixelTexture(this, 'ini_' + id, ARTE_INIMIGOS[d.arte || id], d.cores, d.scale));
     gfxTexture(this, 'mina', 22, 22, (g) => {
