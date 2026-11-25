@@ -747,6 +747,7 @@ class GameScene extends Phaser.Scene {
 
   // Chefe da galáxia número i (força em src/dados/eventos.js)
   spawnBoss(i) {
+    tocarSom(this, 'chefe');
     const c = EVENTOS.chefes[i || 0];
     const p = this.spawnPoint();
     const key = 'boss_' + this.gi;
@@ -771,6 +772,7 @@ class GameScene extends Phaser.Scene {
 
   // Nave-mãe aos 30:00: registra a vitória e vem destruir o jogador (RN-01, RN-02)
   chegarNaveMae() {
+    tocarSom(this, 'chefe');
     this.vitoriaRegistrada = true;
     this.primeiraVitoria = !SAVE.cleared[this.gi];
     SAVE.cleared[this.gi] = true;
@@ -1009,6 +1011,7 @@ class GameScene extends Phaser.Scene {
 
   killEnemy(e) {
     if (!e.active) return;
+    tocarSom(this, 'explosao');
     const mult = this.gal.rewardMult * this.creditMult;
     if (!e.semRecompensa) {
       // explodiu sozinho (kamikaze, bomba-relógio) não dá recompensa nem efeito de morte
@@ -1030,6 +1033,7 @@ class GameScene extends Phaser.Scene {
   }
 
   breakRock(r) {
+    tocarSom(this, 'meteoro');
     this.boom(r.x, r.y, 10, r.crystal ? 0x22d3ee : 0xa8a29e);
     r.disableBody(true, true);
     // meteoros só dão créditos; cristal dá mais (RN-55, valores em src/config.js)
@@ -1076,6 +1080,7 @@ class GameScene extends Phaser.Scene {
       else if (w.id === 'shock') fired = this.fireShock(s);
       else if (w.id === 'chain') fired = this.fireChain(s);
       else if (w.id === 'disc') fired = this.fireDiscs(s);
+      if (fired) tocarSom(this, 'tiro');
       w.timer = fired ? s.cd : 0.1;
     });
     this.updateOrbitals(dt, orbitalStats);
@@ -1374,7 +1379,7 @@ class GameScene extends Phaser.Scene {
       this.aproximarObj(g);
       g.setScale(g.escalaBase * (1 + 0.15 * Math.sin(this.elapsed * 6 + g.fase)));   // pulsa de leve
       const dx = px - g.x, dy = py - g.y, d = Math.hypot(dx, dy);
-      if (d < 22) { g.setActive(false).setVisible(false); this.gainXp(g.val); return; }
+      if (d < 22) { g.setActive(false).setVisible(false); tocarSom(this, 'gema'); this.gainXp(g.val); return; }
       if (d > 1600 && !g.magnetized) { g.setActive(false).setVisible(false); return; }
       if (d < mag || g.magnetized) {
         g.magnetized = true;
@@ -1409,7 +1414,7 @@ class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(p);
       p.destroy();
       if (t === 'heal') { this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3); this.floatText(px, py, '+VIDA', '#f87171'); }
-      else if (t === 'coin') { const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
+      else if (t === 'coin') { tocarSom(this, 'moeda'); const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
       else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, 'ÍMÃ TOTAL!', '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
       else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
@@ -1459,6 +1464,7 @@ class GameScene extends Phaser.Scene {
     if (this.avisoAtivo || !this.filaAvisos.length || this.ended) return;
     const c = this.filaAvisos.shift();
     this.avisoAtivo = true;
+    tocarSom(this, 'conquista');
     const x = W - 150, y = 280, D = 160, partes = [];
     const fixo = (o) => { partes.push(o.setScrollFactor(0).setDepth(D)); return o; };
     fixo(this.add.rectangle(x, y, 270, 62, 0x14532d, 0.92).setStrokeStyle(2, 0x4ade80));
@@ -1629,6 +1635,7 @@ class GameScene extends Phaser.Scene {
     }
   }
   openLevelUp() {
+    tocarSom(this, 'nivel');
     this.pauseForModal();
     let options = this.pickWeighted(this.upgradeOptions(), 3);
     if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
@@ -1652,6 +1659,7 @@ class GameScene extends Phaser.Scene {
     return { raridade, melhorias: { comum: 1, raro: 2, epico: 3 }[raridade], creditos: { comum: 30, raro: 60, epico: 100 }[raridade] };
   }
   openChest() {
+    tocarSom(this, 'bau');
     this.pauseForModal();
     const doSubchefe = this.bausSubchefe > 0;
     if (doSubchefe) this.bausSubchefe--;
@@ -1786,6 +1794,7 @@ class GameScene extends Phaser.Scene {
     this.ultimoDanoTempo = this.elapsed;
     this.invuln = 0.5;
     this.hp -= d;
+    tocarSom(this, 'dano');
     this.cameras.main.shake(80, 0.006);
     this.player.setTint(0xff6666);
     this.time.delayedCall(120, () => { if (this.player.active) this.player.clearTint(); });
