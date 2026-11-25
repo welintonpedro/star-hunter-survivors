@@ -245,7 +245,7 @@ class GameScene extends Phaser.Scene {
     this.weapons.forEach((w) => { if (!w.evolved && w.level < MAX_WEAPON_LEVEL) opts.push({ kind: 'weapon', id: w.id, level: w.level + 1, weight: 1.4 }); });
     if (this.weapons.length < MAX_WEAPONS) {
       // armas novas: só as comuns (poder de nave nunca aparece como arma nova)
-      Object.keys(WEAPONS).forEach((id) => { if (this.armaDisponivel(id) && !this.hasWeapon(id)) opts.push({ kind: 'weapon', id, level: 1, weight: 1 }); });
+      Object.keys(WEAPONS).forEach((id) => { if (this.armaDisponivel(id) && !this.hasWeapon(id)) opts.push({ kind: 'weapon', id, level: 1, weight: WEAPONS[id].suprema ? CHANCE_SUPREMA : 1 }); });
     }
     Object.keys(PASSIVES).forEach((id) => {
       const lv = this.passives[id] || 0;
@@ -268,12 +268,12 @@ class GameScene extends Phaser.Scene {
   // Arma comum que pode aparecer nas cartas: não é poder de nave e não está travada
   armaDisponivel(id) {
     const d = WEAPONS[id];
-    if (this.armasDaPartida && !this.armasDaPartida.includes(id)) return false;   // fora do sorteio desta partida
+    if (!d.suprema && this.armasDaPartida && !this.armasDaPartida.includes(id)) return false;   // fora do sorteio desta partida (supremas podem sair em qualquer uma)
     return !d.poder && (!d.hidden || armaLiberada(SAVE, id));
   }
   // Sorteia quais armas comuns podem sair nas cartas desta partida (RN-64)
   sortearArmasDaPartida() {
-    const candidatas = Object.keys(WEAPONS).filter((id) => !WEAPONS[id].poder && (!WEAPONS[id].hidden || armaLiberada(SAVE, id)));
+    const candidatas = Object.keys(WEAPONS).filter((id) => !WEAPONS[id].poder && !WEAPONS[id].suprema && (!WEAPONS[id].hidden || armaLiberada(SAVE, id)));
     Phaser.Utils.Array.Shuffle(candidatas);
     return candidatas.slice(0, ARMAS_POR_PARTIDA);
   }
@@ -301,8 +301,9 @@ class GameScene extends Phaser.Scene {
     if (o.kind === 'weapon') {
       const d = WEAPONS[o.id];
       icone = iconeDe(o.id); nome = d.name; efeito = d.desc[o.level - 1]; nivel = o.level; max = MAX_WEAPON_LEVEL;
-      etiqueta = d.poder ? tx('PODER DA NAVE') : o.level === 1 ? tx('ARMA NOVA') : tx('ARMA');
+      etiqueta = d.poder ? tx('PODER DA NAVE') : d.suprema ? tx('ARMA SUPREMA') : o.level === 1 ? tx('ARMA NOVA') : tx('ARMA');
       cor = d.poder ? 0x422006 : 0x1e1b4b; borda = d.poder ? 0xfacc15 : 0x818cf8;
+      if (d.suprema) { cor = 0x713f12; borda = 0xfde047; }   // carta rara dourada (RN-66)
     } else if (o.kind === 'passive') {
       const d = PASSIVES[o.id];
       icone = iconeDe(o.id); nome = d.name; efeito = d.desc; nivel = o.level; max = d.max;
@@ -631,7 +632,7 @@ class GameScene extends Phaser.Scene {
     const n = passoNascimento(this.estadoOndas, t, dt, this.contarComuns(), ONDAS);
     if (n > 0) {
       // quem nasce: os inimigos da galáxia que já entraram (src/dados/inimigos.js)
-      const pesos = pesosNoTempo(INIMIGOS_POR_GALAXIA[this.gi], INIMIGOS, t);
+      const pesos = pesosNoTempo(INIMIGOS_POR_GALAXIA[this.gi], INIMIGOS, t, MISTURA_INIMIGOS, COMPORTAMENTOS_QUE_ATIRAM);
       for (let i = 0; i < n; i++) {
         const id = escolherTipo(pesos, Math.random());
         const grupo = INIMIGOS[id].grupo || 1;
@@ -737,7 +738,7 @@ class GameScene extends Phaser.Scene {
 
   spawnElite(x, y) {
     // subchefe: versão gigante de um dos inimigos que já apareceram (menos o enxame)
-    const opcoes = Object.keys(pesosNoTempo(INIMIGOS_POR_GALAXIA[this.gi], INIMIGOS, this.elapsed))
+    const opcoes = Object.keys(pesosNoTempo(INIMIGOS_POR_GALAXIA[this.gi], INIMIGOS, this.elapsed, MISTURA_INIMIGOS, COMPORTAMENTOS_QUE_ATIRAM))
       .filter((id) => INIMIGOS[id].comp !== 'enxame' && INIMIGOS[id].comp !== 'sentinela');
     const tk = opcoes.length ? opcoes[this.eliteCount % opcoes.length] : this.resolverTipo('bug');
     const e = this.spawnEnemy(tk, x, y) || this.forceSpawn(tk, x, y);
@@ -939,7 +940,7 @@ class GameScene extends Phaser.Scene {
   // Tiro de inimigo comum (mult = força do tiro; subchefe bate mais forte)
   tiroInimigo(e, ang, vel, mult) {
     const b = this.enemyShot(e.x, e.y, ang, vel);
-    if (b) b.dmg *= (mult || 1) * (e.isElite ? 1.6 : 1);
+    if (b) b.dmg *= (mult || 1) * (e.isElite ? 1.6 : e.isBoss ? 1 : MISTURA_INIMIGOS.danoTiroAtiradores);   // tiro de inimigo comum dói menos (RN-67)
     return b;
   }
   // Mina parada que dura 8 s e explode ao encostar na nave
@@ -1119,6 +1120,9 @@ class GameScene extends Phaser.Scene {
       else if (w.id === 'disc') fired = this.fireDiscs(s);
       else if (w.id === 'supermissil') fired = this.fireSuperMissil(s);
       else if (w.id === 'nova') fired = this.fireNova(s);
+      else if (w.id === 'laser') fired = this.fireLaser(s);
+      else if (w.id === 'chuva') fired = this.fireChuva(s);
+      else if (w.id === 'trovao') fired = this.fireTrovao(s);
       if (fired) tocarSom(this, 'tiro');
       w.timer = fired ? s.cd : 0.1;
     });
@@ -1238,6 +1242,65 @@ class GameScene extends Phaser.Scene {
       f.setActive(true).setVisible(true).setPosition(px, py).setTint(Math.random() < 0.5 ? 0xf97316 : 0xfde047).setAlpha(1).setScale(1.6).setDepth(9);
       f.vx = Math.cos(aa) * vel; f.vy = Math.sin(aa) * vel; f.vida = 0.35; f.vidaMax = 0.35;
     }
+  }
+  // ---------- ARMAS SUPREMAS (RN-66) ----------
+  // Laser Aniquilador: um feixe reto que acerta tudo na linha
+  fireLaser(s) {
+    const t = this.nearestTarget(s.range);
+    if (!t) return false;
+    const px = this.player.x, py = this.player.y, base = Math.atan2(t.y - py, t.x - px);
+    const larg = 16 * s.size, L = s.range;
+    for (let k = 0; k < s.amount; k++) {
+      const a = base + (k - (s.amount - 1) / 2) * 0.35, cx = Math.cos(a), cy = Math.sin(a);
+      const feixe = this.add.rectangle(px + cx * L / 2, py + cy * L / 2, L, larg, 0xf43f5e, 0.85).setRotation(a).setDepth(11);
+      const nucleo = this.add.rectangle(px + cx * L / 2, py + cy * L / 2, L, larg * 0.35, 0xffe4e6, 1).setRotation(a).setDepth(12);
+      this.tweens.add({ targets: [feixe, nucleo], alpha: 0, scaleY: 0.2, duration: 300, onComplete: () => { feixe.destroy(); nucleo.destroy(); } });
+      this.forEachTarget((e) => {
+        const dx = e.x - px, dy = e.y - py, ao = dx * cx + dy * cy;          // distância ao longo do feixe
+        if (ao < 0 || ao > L) return;
+        if (Math.abs(dx * cy - dy * cx) < larg / 2 + (e.hitR || 14)) this.damageTarget(e, s.dmg);   // distância até a linha
+      });
+    }
+    this.cameras.main.shake(60, 0.003);
+    return true;
+  }
+  // Chuva de Meteoros: marca o chão e, logo depois, o meteoro cai e explode
+  fireChuva(s) {
+    const px = this.player.x, py = this.player.y, alvos = [];
+    this.enemies.children.iterate((e) => { if (e && e.active && !e.intangivel && Math.abs(e.x - px) < 480 && Math.abs(e.y - py) < 280) alvos.push(e); });
+    if (!alvos.length) return false;
+    for (let k = 0; k < s.amount; k++) {
+      const e = alvos[Math.floor(Math.random() * alvos.length)];
+      const x = e.x + (Math.random() - 0.5) * 30, y = e.y + (Math.random() - 0.5) * 30;
+      const marca = this.add.circle(x, y, s.radius, 0xfb923c, 0.12).setStrokeStyle(2, 0xfb923c, 0.7).setDepth(5);
+      const pedra = this.add.circle(x - 120, y - 260, 12, 0x78716c).setStrokeStyle(3, 0xfde047).setDepth(11);
+      this.tweens.add({ targets: pedra, x, y, duration: 380 + k * 60, ease: 'Quad.easeIn', onComplete: () => {
+        pedra.destroy(); marca.destroy();
+        if (this.ended) return;
+        this.explode(x, y, s.radius, s.dmg);
+        this.boom(x, y, 10, 0xfb923c);
+      } });
+    }
+    tocarSom(this, 'explosao');
+    return true;
+  }
+  // Tempestade Trovejante: trovões caem do céu em vários inimigos e atordoam
+  fireTrovao(s) {
+    const px = this.player.x, py = this.player.y, alvos = [];
+    this.enemies.children.iterate((e) => { if (e && e.active && !e.intangivel && Math.abs(e.x - px) < 520 && Math.abs(e.y - py) < 300) alvos.push(e); });
+    if (!alvos.length) return false;
+    Phaser.Utils.Array.Shuffle(alvos);
+    const g = this.add.graphics().setDepth(12);
+    for (let k = 0; k < Math.min(s.amount, alvos.length); k++) {
+      const e = alvos[k];
+      g.lineStyle(5, 0xfacc15, 0.5); this.zigzag(g, e.x + 30, e.y - 320, e.x, e.y);
+      g.lineStyle(2, 0xfef9c3, 1); this.zigzag(g, e.x + 30, e.y - 320, e.x, e.y);
+      this.damageTarget(e, s.dmg);
+      if (e.active && !e.isBoss) { e.atordoado = s.atordoa; e.atordoamentos = (e.atordoamentos || 0) + 1; }
+    }
+    this.tweens.add({ targets: g, alpha: 0, duration: 240, onComplete: () => g.destroy() });
+    this.cameras.main.flash(60, 254, 249, 195);
+    return true;
   }
   // Super Míssil: lento, grande e com explosão enorme (RN-63)
   fireSuperMissil(s) {

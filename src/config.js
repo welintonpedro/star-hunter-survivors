@@ -28,6 +28,8 @@ const PODER_CHAMAS_DANO = 45;    // dano por segundo (multiplicado pela vida dos
 const PODER_CHAMAS_ALCANCE = 240;
 // Armas comuns sorteadas para cada partida: nem todas aparecem (RN-64)
 const ARMAS_POR_PARTIDA = 5;
+// Peso de uma arma suprema nas cartas (arma comum = 1): quanto menor, mais rara (RN-66)
+const CHANCE_SUPREMA = 0.15;
 const INIMIGO_LONGE = 1300;       // inimigo comum mais longe que isso da nave reaparece na borda da tela (RN-59)
 const MAX_ENEMIES = 250;          // limite de inimigos na tela (RN-12)
 const MAX_WEAPONS = 4, MAX_PASSIVES = 4, MAX_WEAPON_LEVEL = 5;

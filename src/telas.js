@@ -35,6 +35,7 @@ function abrirCodex(scene, aoFechar) {
     const d = WEAPONS[id], x = W / 2 + (i - (armas.length - 1) / 2) * passo, y = 98;
     const travada = d.hidden && !armaLiberada(SAVE, id);
     icone(x, y, iconeDe(id), 36, travada);
+    if (d.suprema) fixo(scene.add.rectangle(x, y, 40, 40).setStrokeStyle(2, 0xfacc15), 3);   // moldura dourada
     let sub = d.name;
     if (d.poder) sub += '\n(' + SHIPS.find((s) => s.id === d.poder).name + ')';
     if (travada) sub += '\n' + tx('achada {n}/{total}', { n: Math.min(ACHADOS_PARA_LIBERAR, SAVE.stats.armasAchadas[id] || 0), total: ACHADOS_PARA_LIBERAR });
@@ -51,9 +52,10 @@ function abrirCodex(scene, aoFechar) {
   });
 
   // combos
-  const descobertos = armas.filter((id) => SAVE.combos.includes(id)).length;
-  titulo(262, tx('COMBOS  ({n}/{total} descobertos)', { n: descobertos, total: armas.length }));
-  armas.forEach((id, i) => {
+  const comCombo = armas.filter((id) => WEAPONS[id].evo);   // armas supremas não têm combo (RN-66)
+  const descobertos = comCombo.filter((id) => SAVE.combos.includes(id)).length;
+  titulo(262, tx('COMBOS  ({n}/{total} descobertos)', { n: descobertos, total: comCombo.length }));
+  comCombo.forEach((id, i) => {
     const col = i % 4, lin = Math.floor(i / 4);   // 4 colunas: os 11 combos cabem em 3 linhas
     const cx = W / 2 + (col - 1.5) * 228, cy = 312 + lin * 64;
     const sabe = SAVE.combos.includes(id), d = WEAPONS[id];

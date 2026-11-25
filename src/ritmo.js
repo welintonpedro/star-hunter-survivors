@@ -44,12 +44,21 @@ function escolherTipo(pesos, r) {
 // Chance de cada inimigo da galáxia no tempo t: só quem já entrou; o recém-chegado
 // (até DESTAQUE_NOVO segundos depois de entrar) aparece 3x mais, para o jogador notar a novidade.
 const DESTAQUE_NOVO = 90;
-function pesosNoTempo(lista, defs, t) {
+// mistura (opcional, RN-67): os antigos perdem chance a cada inimigo novo que entra,
+// e quem atira de longe aparece menos. Valores em MISTURA_INIMIGOS (src/dados/ondas.js).
+function pesosNoTempo(lista, defs, t, mistura, quemAtira) {
   const pesos = {};
   lista.forEach((id) => {
     const d = defs[id];
     if (d.entra < 0 || d.entra > t) return;
-    pesos[id] = d.peso * (t - d.entra < DESTAQUE_NOVO ? 3 : 1);
+    let p = d.peso * (t - d.entra < DESTAQUE_NOVO ? 3 : 1);
+    if (mistura) {
+      let novos = 0;
+      lista.forEach((o) => { const e = defs[o].entra; if (e > d.entra && e <= t) novos++; });
+      p *= Math.max(mistura.pesoMinimo, 1 - mistura.reducaoPorNovo * novos);
+      if (quemAtira && quemAtira.includes(d.comp)) p *= mistura.pesoAtiradores;
+    }
+    pesos[id] = p;
   });
   return pesos;
 }

@@ -81,6 +81,22 @@ const WEAPONS = {
     desc: ['Atira para todos os lados ao mesmo tempo', '+4 projéteis', '+40% dano', '+1 perfuração', '+4 projéteis e -20% recarga'],
     stats: (l) => ({ cd: 1.4 * (l >= 5 ? 0.8 : 1), dmg: 8 * (l >= 3 ? 1.4 : 1), amount: 8 + (l >= 2 ? 4 : 0) + (l >= 5 ? 4 : 0), pierce: l >= 4 ? 1 : 0 }),
     evolve: (s) => { s.amount += 8; s.dmg *= 1.5; s.pierce += 1; s.duplo = true; }
+  },
+  // ----- ARMAS SUPREMAS (RN-66): carta rara com moldura dourada, muito fortes e sem combo -----
+  laser: {
+    name: 'Laser Aniquilador', abbr: 'LA', color: 0xf43f5e, hidden: false, suprema: true,
+    desc: ['Raio contínuo que atravessa tudo em linha', '+40% dano', '+30% largura', '-20% recarga', '+1 raio e +40% dano'],
+    stats: (l) => ({ cd: 2.4 * (l >= 4 ? 0.8 : 1), dmg: 70 * (l >= 2 ? 1.4 : 1) * (l >= 5 ? 1.4 : 1), amount: 1 + (l >= 5 ? 1 : 0), size: 1 * (l >= 3 ? 1.3 : 1), range: 720 })
+  },
+  chuva: {
+    name: 'Chuva de Meteoros', abbr: 'CM', color: 0xfb923c, hidden: false, suprema: true,
+    desc: ['Meteoros caem do céu sobre os inimigos', '+1 meteoro', '+40% dano', '+30% área da explosão', '+2 meteoros e -20% recarga'],
+    stats: (l) => ({ cd: 2.0 * (l >= 5 ? 0.8 : 1), dmg: 45 * (l >= 3 ? 1.4 : 1), amount: 2 + (l >= 2 ? 1 : 0) + (l >= 5 ? 2 : 0), radius: 75 * (l >= 4 ? 1.3 : 1) })
+  },
+  trovao: {
+    name: 'Tempestade Trovejante', abbr: 'TT', color: 0xfacc15, hidden: false, suprema: true,
+    desc: ['Trovões caem em vários inimigos e atordoam', '+2 trovões', '+40% dano', '+0,4 s atordoando', '+3 trovões e -20% recarga'],
+    stats: (l) => ({ cd: 1.4 * (l >= 5 ? 0.8 : 1), dmg: 32 * (l >= 3 ? 1.4 : 1), amount: 3 + (l >= 2 ? 2 : 0) + (l >= 5 ? 3 : 0), atordoa: 0.3 + (l >= 4 ? 0.4 : 0) })
   }
 };
 

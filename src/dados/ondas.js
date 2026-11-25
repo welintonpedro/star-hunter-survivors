@@ -44,4 +44,11 @@ const ONDAS = [
   /* 29 */ { min: 220, max: 240, porSegundo: 12.0, vida: 65.54, dano: 2.74 }
 ];
 
-if (typeof module !== 'undefined') module.exports = { ONDAS };
+// Mistura de inimigos (RN-67, pedido do dono em 25/11/2026):
+//   reducaoPorNovo = quanto cada inimigo novo que entra tira da chance dos antigos (0,2 = -20% por novo)
+//   pesoMinimo     = os antigos nunca somem de vez: ficam com pelo menos essa fração da chance
+//   pesoAtiradores = chance extra dos que atiram de longe (0,45 = menos da metade)
+//   danoTiroAtiradores = dano dos tiros de inimigos comuns (0,7 = 30% menos)
+const MISTURA_INIMIGOS = { reducaoPorNovo: 0.2, pesoMinimo: 0.3, pesoAtiradores: 0.45, danoTiroAtiradores: 0.7 };
+const COMPORTAMENTOS_QUE_ATIRAM = ['atirador', 'leque', 'espiral', 'sentinela'];
+if (typeof module !== 'undefined') module.exports = { ONDAS, MISTURA_INIMIGOS, COMPORTAMENTOS_QUE_ATIRAM };

@@ -31,10 +31,10 @@ const COMPORTAMENTOS = {
   rapido: () => null,
   tanque: () => null,
 
-  // Atirador: fica a ~300 px e cospe um tiro a cada 2,2 s
+  // Atirador: fica a ~250 px (perto o bastante para ser atingido) e cospe um tiro a cada 2,2 s
   atirador(c, e, dt, k) {
     if (temporizador(e, 'tiro', dt, 2.2) && k.d < 560) c.tiroInimigo(e, Math.atan2(k.dy, k.dx), 230, 1);
-    return manterDistancia(e, k, 260, 360);
+    return manterDistancia(e, k, 200, 300);
   },
 
   // Kamikaze: perto da nave acelera piscando e explode
