@@ -63,6 +63,26 @@ class BootScene extends Phaser.Scene {
       g.fillStyle(0xfacc15); g.fillPoints(pts, true);
       g.fillStyle(0xfef9c3); g.fillCircle(24, 24, 6);
     });
+    // locais novos da E3
+    gfxTexture(this, 'derelict', 110, 80, (g) => {
+      g.fillStyle(0x334155); g.fillTriangle(10, 40, 60, 14, 60, 66);
+      g.fillStyle(0x475569); g.fillRect(56, 26, 34, 28);
+      g.fillStyle(0x1e293b); g.fillRect(88, 18, 14, 12); g.fillRect(84, 52, 18, 10);
+      g.fillStyle(0xf97316, 0.85); g.fillCircle(72, 40, 6); g.fillCircle(40, 34, 3);
+      g.lineStyle(2, 0x94a3b8, 0.8); g.lineBetween(62, 30, 76, 48); g.lineBetween(30, 44, 44, 52);
+    });
+    gfxTexture(this, 'beacon', 64, 96, (g) => {
+      g.fillStyle(0x64748b); g.fillRect(28, 30, 8, 60); g.fillRect(16, 86, 32, 8);
+      g.fillStyle(0x0ea5e9, 0.25); g.fillCircle(32, 22, 22);
+      g.fillStyle(0x38bdf8); g.fillCircle(32, 22, 11);
+      g.fillStyle(0xe0f2fe); g.fillCircle(32, 22, 5);
+    });
+    gfxTexture(this, 'cache', 72, 72, (g) => {
+      g.fillStyle(0x14532d); g.fillRect(8, 14, 56, 46);
+      g.fillStyle(0x22c55e); g.fillRect(8, 14, 56, 10);
+      g.lineStyle(3, 0x86efac, 1); g.strokeRect(8, 14, 56, 46);
+      g.fillStyle(0xfacc15); g.fillRect(31, 30, 10, 18); g.fillRect(27, 35, 18, 8);
+    });
     starTexture(this, 'stars_far', 256, 70, 1);
     starTexture(this, 'stars_near', 256, 22, 2);
     nebulaTexture(this, 'nebula');

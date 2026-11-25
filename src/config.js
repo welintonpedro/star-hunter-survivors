@@ -9,12 +9,12 @@
 // =====================================================
 
 const W = 960, H = 540;
-const WORLD = 6000;              // tamanho do mapa de cada galáxia
+const WORLD = 17000;             // tamanho do mapa de cada galáxia (~8x o da v0.2); dá a volta: src/mundo.js
 // Horários de chefes, subchefes, cercos e enxames: src/dados/eventos.js
 // Quantidade de inimigos por minuto: src/dados/ondas.js
 const METEORO_PERTO = 150;       // meteoro a essa distância da nave é atacado como inimigo (RN-46)
 const AUTO_REWARD_MULT = 0.6;
 const MAX_ENEMIES = 200;
 const MAX_WEAPONS = 4, MAX_PASSIVES = 4, MAX_WEAPON_LEVEL = 5;
-const ROCK_COUNT = 140;
+const ROCK_COUNT = 1100;         // meteoros espalhados pelo mapa (mesma densidade da v0.2)
 

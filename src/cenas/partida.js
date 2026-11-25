@@ -28,8 +28,9 @@ class GameScene extends Phaser.Scene {
     this.minimapTimer = 0;
 
     // mundo
-    this.physics.world.setBounds(0, 0, WORLD, WORLD);
-    this.cameras.main.setBounds(0, 0, WORLD, WORLD);
+    // sem bordas: o mapa dá a volta (src/mundo.js). A câmera segue a nave para sempre.
+    this.cameras.main.removeBounds();
+    this.aproximarTimer = 0;
     this.cameras.main.setBackgroundColor(this.gal.bg);
     this.far = this.add.tileSprite(0, 0, W, H, 'stars_far').setOrigin(0).setScrollFactor(0).setTint(this.gal.starTint).setAlpha(0.7).setDepth(-30);
     this.near = this.add.tileSprite(0, 0, W, H, 'stars_near').setOrigin(0).setScrollFactor(0).setDepth(-29);
@@ -38,7 +39,6 @@ class GameScene extends Phaser.Scene {
     // jogador
     this.player = this.physics.add.sprite(WORLD / 2, WORLD / 2, 'ship_' + ship.id).setDepth(10);
     this.player.body.setCircle(16, this.player.width / 2 - 16, this.player.height / 2 - 16);
-    this.player.setCollideWorldBounds(true);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
 
     // grupos
@@ -68,20 +68,24 @@ class GameScene extends Phaser.Scene {
   // ---------- MUNDO: nebulosas, locais únicos, meteoros ----------
   buildWorld() {
     const rnd = mulberry32(99 + this.gi * 31);
-    for (let i = 0; i < 34; i++) {
-      this.add.image(rnd() * WORLD, rnd() * WORLD, 'nebula')
+    this.nebulas = [];
+    for (let i = 0; i < 90; i++) {
+      this.nebulas.push(this.add.image(rnd() * WORLD, rnd() * WORLD, 'nebula')
         .setScale(2 + rnd() * 4).setTint(i % 3 === 0 ? hexToInt(this.gal.alien.b) : this.gal.starTint)
-        .setAlpha(0.1 + rnd() * 0.12).setDepth(-20);
+        .setAlpha(0.1 + rnd() * 0.12).setDepth(-20));
     }
-    const border = this.add.graphics().setDepth(-5);
-    border.lineStyle(8, 0xef4444, 0.5).strokeRect(0, 0, WORLD, WORLD);
 
     this.pois = genPOIs(this.gi).map((p) => {
       const o = Object.assign({}, p, { discovered: false, done: false, scan: 0, cooldown: 0 });
-      const keys = { planet: 'planet_' + this.gi, station: 'station', nest: 'nest_' + this.gi, blackhole: 'blackhole', relic: 'relic' };
-      o.img = this.add.image(o.x, o.y, keys[o.type]).setDepth(o.type === 'blackhole' ? -4 : 1);
+      const keys = { planet: 'planet_' + this.gi, station: 'station', nest: 'nest_' + this.gi, blackhole: 'blackhole', relic: 'relic',
+        derelict: 'derelict', beacon: 'beacon', cache: 'cache' };
+      o.img = this.add.image(o.x, o.y, keys[o.type]).setDepth(o.type === 'blackhole' ? -4 : 1).setScale(o.escala || 1);
+      if (o.type === 'planet' && !o.weapon) o.img.setTint(Phaser.Display.Color.GetColor(200 + (o.escala * 40 | 0), 200, 255 - (o.escala * 60 | 0)));
       if (o.type === 'relic') this.tweens.add({ targets: o.img, scale: 1.25, yoyo: true, repeat: -1, duration: 700 });
-      o.label = this.add.text(o.x, o.y - (o.type === 'planet' ? 110 : o.type === 'blackhole' ? 130 : 70), o.name, {
+      if (o.type === 'beacon') this.tweens.add({ targets: o.img, alpha: 0.6, yoyo: true, repeat: -1, duration: 600 });
+      const alto = { planet: 110, blackhole: 130, derelict: 55, beacon: 62 }[o.type] || 70;
+      o.labelDy = -alto * (o.type === 'relic' ? 1 : (o.escala || 1));
+      o.label = this.add.text(o.x, o.y + o.labelDy, o.name, {
         fontFamily: 'Arial', fontSize: '15px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
       }).setOrigin(0.5).setDepth(2);
       return o;
@@ -89,11 +93,44 @@ class GameScene extends Phaser.Scene {
     this.scanBar = this.add.graphics().setDepth(3);
   }
 
+  // ---------- MAPA QUE DÁ A VOLTA (src/mundo.js) ----------
+  // Traz o objeto para a cópia do mapa mais perto da nave. Devolve o quanto ele andou.
+  aproximarObj(o) {
+    const nx = aproximar(o.x, this.player.x, WORLD), ny = aproximar(o.y, this.player.y, WORLD);
+    const dx = nx - o.x, dy = ny - o.y;
+    if (dx || dy) {
+      if (o.body && o.body.reset) {
+        // corpo de física: reposiciona sem perder a velocidade
+        const vx = o.body.velocity.x, vy = o.body.velocity.y;
+        o.body.reset(nx, ny);
+        o.body.velocity.set(vx, vy);
+      } else { o.x = nx; o.y = ny; }
+    }
+    return { dx, dy };
+  }
+  // Coisas paradas ou lentas: basta conferir algumas vezes por segundo (a troca acontece a
+  // ~8.500 px da nave, muito longe da tela)
+  aproximarTudo() {
+    this.rocks.children.iterate((r) => { if (r && r.active) this.aproximarObj(r); });
+    this.pickups.children.iterate((p) => {
+      if (!p || !p.active) return;
+      const d = this.aproximarObj(p);
+      p.baseY += d.dy;
+      if (p.label) { p.label.x += d.dx; p.label.y += d.dy; }
+    });
+    this.pois.forEach((p) => {
+      const d = this.aproximarObj(p);
+      if (d.dx || d.dy) { p.img.setPosition(p.x, p.y); p.label.setPosition(p.x, p.y + p.labelDy); }
+    });
+    this.nebulas.forEach((n) => this.aproximarObj(n));
+    if (this.naveMae && this.naveMae.active) this.aproximarObj(this.naveMae);
+  }
+
   spawnRocks() {
     const c = WORLD / 2;
     for (let i = 0; i < ROCK_COUNT; i++) {
       let x, y;
-      do { x = 150 + Math.random() * (WORLD - 300); y = 150 + Math.random() * (WORLD - 300); }
+      do { x = Math.random() * WORLD; y = Math.random() * WORLD; }
       while (Math.hypot(x - c, y - c) < 250);
       this.criarMeteoro(x, y, Math.random() < 0.07);
     }
@@ -374,22 +411,26 @@ class GameScene extends Phaser.Scene {
 
   drawMinimap() {
     const g = this.minimap, S = this.mmSize, X = this.mmX, Y = this.mmY, k = S / WORLD;
+    const mx = (x) => X + envolver(x, WORLD) * k, my = (y) => Y + envolver(y, WORLD) * k;
     g.clear();
-    const colors = { planet: 0x22d3ee, station: 0x22c55e, nest: 0xef4444, blackhole: 0xa855f7, relic: 0xfacc15 };
+    const colors = { planet: 0x22d3ee, station: 0x22c55e, nest: 0xef4444, blackhole: 0xa855f7, relic: 0xfacc15,
+      derelict: 0xf97316, beacon: 0x38bdf8, cache: 0x86efac };
     this.pois.forEach((p) => {
-      if (!p.discovered) return;
-      g.fillStyle(p.done ? 0x475569 : colors[p.type], 1);
-      g.fillRect(X + p.x * k - 3, Y + p.y * k - 3, 6, 6);
+      if (!p.discovered && !p.revelado) return;
+      g.fillStyle(p.done ? 0x475569 : colors[p.type], p.discovered ? 1 : 0.55);
+      g.fillRect(mx(p.x) - 3, my(p.y) - 3, 6, 6);
     });
     this.pickups.children.iterate((pk) => {
-      if (pk && pk.active && (pk.ptype === 'chest' || pk.ptype === 'weapon')) { g.fillStyle(0xfacc15, 1); g.fillCircle(X + pk.x * k, Y + pk.y * k, 2.5); }
+      if (pk && pk.active && (pk.ptype === 'chest' || pk.ptype === 'weapon')) { g.fillStyle(0xfacc15, 1); g.fillCircle(mx(pk.x), my(pk.y), 2.5); }
     });
     this.enemies.children.iterate((e) => {
-      if (e && e.active && (e.isElite || e.isBoss)) { g.fillStyle(0xff3b3b, 1); g.fillCircle(X + e.x * k, Y + e.y * k, e.isBoss ? 4 : 3); }
+      if (e && e.active && (e.isElite || e.isBoss)) { g.fillStyle(0xff3b3b, 1); g.fillCircle(mx(e.x), my(e.y), e.isBoss ? 4 : 3); }
     });
+    // moldura da tela, cortada na emenda para não sair do quadro
     const cam = this.cameras.main;
-    g.lineStyle(1, 0xffffff, 0.35).strokeRect(X + cam.scrollX * k, Y + cam.scrollY * k, W * k, H * k);
-    g.fillStyle(0xffffff, 1).fillCircle(X + this.player.x * k, Y + this.player.y * k, 2.5);
+    g.lineStyle(1, 0xffffff, 0.35);
+    retangulosNoMinimapa(cam.scrollX * k, cam.scrollY * k, W * k, H * k, S).forEach((r) => g.strokeRect(X + r.x, Y + r.y, r.w, r.h));
+    g.fillStyle(0xffffff, 1).fillCircle(mx(this.player.x), my(this.player.y), 2.5);
   }
 
   banner(text, color, y) {
@@ -429,6 +470,8 @@ class GameScene extends Phaser.Scene {
 
     this.bankTimer += dt;
     if (this.bankTimer > 10) { this.bankTimer = 0; this.bankCredits(); }
+    this.aproximarTimer -= dt;
+    if (this.aproximarTimer <= 0) { this.aproximarTimer = 0.4; this.aproximarTudo(); }
     this.minimapTimer -= dt;
     if (this.minimapTimer <= 0) { this.minimapTimer = 0.12; this.drawMinimap(); }
     this.updateHUD();
@@ -491,9 +534,6 @@ class GameScene extends Phaser.Scene {
     // explora locais não visitados aos poucos
     const target = this.pois.find((p) => !p.done && p.type !== 'blackhole' && p.type !== 'nest');
     if (target) seek(target.x, target.y, 0.15);
-    // evita as bordas do mapa
-    if (px < 200) fx += 1; if (px > WORLD - 200) fx -= 1;
-    if (py < 200) fy += 1; if (py > WORLD - 200) fy -= 1;
     return { x: fx, y: fy };
   }
 
@@ -542,9 +582,9 @@ class GameScene extends Phaser.Scene {
       let ang = Math.random() * Math.PI * 2;
       if (this.moveDir && Math.random() < 0.35) ang = Math.atan2(this.moveDir.y, this.moveDir.x) + (Math.random() - 0.5) * 2;
       const x = px + Math.cos(ang) * d, y = py + Math.sin(ang) * d;
-      if (x > 40 && y > 40 && x < WORLD - 40 && y < WORLD - 40) return { x, y };
+      return { x, y };
     }
-    return { x: clamp(px + (Math.random() - 0.5) * 1400, 40, WORLD - 40), y: clamp(py + (Math.random() - 0.5) * 1400, 40, WORLD - 40) };
+    return { x: px + 600, y: py };
   }
 
   spawnEnemy(typeKey, x, y) {
@@ -573,7 +613,7 @@ class GameScene extends Phaser.Scene {
     const n = 18, cx = this.player.x, cy = this.player.y;
     for (let i = 0; i < n; i++) {
       const a = i / n * Math.PI * 2;
-      this.spawnEnemy('bug', clamp(cx + Math.cos(a) * 480, 40, WORLD - 40), clamp(cy + Math.sin(a) * 480, 40, WORLD - 40));
+      this.spawnEnemy('bug', cx + Math.cos(a) * 480, cy + Math.sin(a) * 480);
     }
     this.banner('CERCO!', '#fca5a5');
   }
@@ -585,7 +625,7 @@ class GameScene extends Phaser.Scene {
     const sx = this.player.x - dirx * 650, sy = this.player.y - diry * 650;
     for (let i = 0; i < 20; i++) {
       const off = (i - 10) * 28;
-      const e = this.spawnEnemy('diamond', clamp(sx - diry * off + (Math.random() - 0.5) * 60, 20, WORLD - 20), clamp(sy + dirx * off + (Math.random() - 0.5) * 60, 20, WORLD - 20));
+      const e = this.spawnEnemy('diamond', sx - diry * off + (Math.random() - 0.5) * 60, sy + dirx * off + (Math.random() - 0.5) * 60);
       if (e) { e.straight = { x: dirx * 240, y: diry * 240 }; e.life = 7; }
     }
     this.banner('ENXAME!', '#fde047');
@@ -679,8 +719,9 @@ class GameScene extends Phaser.Scene {
     const list = [];
     this.enemies.children.iterate((e) => {
       if (!e || !e.active) return;
+      this.aproximarObj(e);
       list.push(e);
-      const key = Math.floor(e.x / CELL) * 1000 + Math.floor(e.y / CELL);
+      const key = Math.floor(e.x / CELL) * 100003 + Math.floor(e.y / CELL);
       let arr = grid.get(key);
       if (!arr) { arr = []; grid.set(key, arr); }
       arr.push(e);
@@ -709,7 +750,7 @@ class GameScene extends Phaser.Scene {
         const cx = Math.floor(e.x / CELL), cy = Math.floor(e.y / CELL);
         for (let ox = -1; ox <= 1; ox++) {
           for (let oy = -1; oy <= 1; oy++) {
-            const arr = grid.get((cx + ox) * 1000 + (cy + oy));
+            const arr = grid.get((cx + ox) * 100003 + (cy + oy));
             if (!arr) continue;
             for (let j = 0; j < arr.length; j++) {
               const o = arr[j];
@@ -1089,6 +1130,7 @@ class GameScene extends Phaser.Scene {
     const px = this.player.x, py = this.player.y, mag = this.mods.magnet;
     this.gems.children.iterate((g) => {
       if (!g || !g.active) return;
+      this.aproximarObj(g);
       const dx = px - g.x, dy = py - g.y, d = Math.hypot(dx, dy);
       if (d < 22) { g.setActive(false).setVisible(false); this.gainXp(g.val); return; }
       if (d > 1600 && !g.magnetized) { g.setActive(false).setVisible(false); return; }
@@ -1105,7 +1147,7 @@ class GameScene extends Phaser.Scene {
     const p = this.add.image(x, y, keys[ptype]).setDepth(6);
     p.ptype = ptype; p.extra = extra;
     this.pickups.add(p);
-    this.tweens.add({ targets: p, y: y - 6, yoyo: true, repeat: -1, duration: 500 });
+    p.baseY = y; p.bob = Math.random() * 6;
     if (ptype === 'weapon') {
       p.label = this.add.text(x, y - 34, WEAPONS[extra].name + '!', { fontFamily: 'Arial', fontSize: '13px', color: '#f5d0fe', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setDepth(7);
     }
@@ -1114,7 +1156,11 @@ class GameScene extends Phaser.Scene {
   updatePickups() {
     const px = this.player.x, py = this.player.y;
     const got = [];
-    this.pickups.children.iterate((p) => { if (p && p.active && Math.hypot(p.x - px, p.y - py) < 30) got.push(p); });
+    this.pickups.children.iterate((p) => {
+      if (!p || !p.active) return;
+      p.y = p.baseY - 3 - 3 * Math.sin(this.elapsed * 6.3 + p.bob); // balança de leve
+      if (Math.hypot(p.x - px, p.y - py) < 30) got.push(p);
+    });
     got.forEach((p) => {
       const t = p.ptype, extra = p.extra;
       if (p.label) p.label.destroy();
@@ -1158,17 +1204,30 @@ class GameScene extends Phaser.Scene {
         p.discovered = true;
         this.banner('DESCOBERTO: ' + p.name, '#a5f3fc');
         if (p.type === 'nest') this.triggerNest(p);
+        if (p.type === 'beacon') this.acenderFarol(p);
       }
-      if (p.type === 'planet' && !p.done) {
-        if (d < 130) {
+      // planetas e destroços: fique perto por 1,5 s para escanear
+      if ((p.type === 'planet' || p.type === 'derelict') && !p.done) {
+        const raio = p.type === 'planet' ? 130 : 100, barY = p.y + (p.type === 'planet' ? 85 : 50) * (p.escala || 1);
+        if (d < raio) {
           p.scan += dt;
-          this.scanBar.fillStyle(0x000000, 0.7).fillRect(p.x - 50, p.y + 85, 100, 10);
-          this.scanBar.fillStyle(0x22d3ee, 1).fillRect(p.x - 48, p.y + 87, 96 * Math.min(1, p.scan / 1.5), 6);
+          this.scanBar.fillStyle(0x000000, 0.7).fillRect(p.x - 50, barY, 100, 10);
+          this.scanBar.fillStyle(0x22d3ee, 1).fillRect(p.x - 48, barY + 2, 96 * Math.min(1, p.scan / 1.5), 6);
           if (p.scan >= 1.5) {
             p.done = true; p.label.setText(p.name + ' (explorado)').setColor('#94a3b8');
-            this.gainHiddenWeapon(p.weapon);
+            if (p.weapon) this.gainHiddenWeapon(p.weapon);
+            else this.recompensaDeLocal(p, p.type === 'planet' ? 14 : 8, p.type === 'planet' ? 120 : 70);
           }
         } else if (p.scan > 0) p.scan = Math.max(0, p.scan - dt);
+      }
+      if (p.type === 'cache' && !p.done && d < 60) {
+        p.done = true; p.img.setAlpha(0.35);
+        p.label.setText(p.name + ' (vazio)').setColor('#94a3b8');
+        ['heal', 'magnet', 'bomb'].forEach((t, i) => {
+          const a = -Math.PI / 2 + (i - 1) * 0.9;
+          this.dropPickup(p.x + Math.cos(a) * 70, p.y + Math.sin(a) * 70, t);
+        });
+        this.banner('SUPRIMENTOS!', '#86efac');
       }
       if (p.type === 'station') {
         p.cooldown -= dt;
@@ -1186,6 +1245,24 @@ class GameScene extends Phaser.Scene {
       }
       if (p.type === 'blackhole') this.updateBlackHole(p, dt, d);
     });
+  }
+  // Farol: marca no minimapa os 3 locais ainda não descobertos mais próximos
+  acenderFarol(p) {
+    p.done = true;
+    const perto = this.pois.filter((o) => !o.discovered && !o.revelado)
+      .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 3);
+    perto.forEach((o) => { o.revelado = true; });
+    if (perto.length) this.banner('FAROL: ' + perto.length + ' locais marcados no mapa', '#38bdf8');
+  }
+  // Planeta sem arma ou destroços: solta gemas em volta e dá créditos
+  recompensaDeLocal(p, gemas, creditos) {
+    for (let i = 0; i < gemas; i++) {
+      const a = i / gemas * Math.PI * 2;
+      this.dropGem(p.x + Math.cos(a) * 60, p.y + Math.sin(a) * 60, 3);
+    }
+    const v = creditos * this.gal.rewardMult * this.creditMult;
+    this.runCredits += v;
+    this.floatText(this.player.x, this.player.y, '+' + fmt(v) + ' créditos', '#facc15');
   }
   triggerNest(p) {
     p.done = true;
