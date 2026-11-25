@@ -1,6 +1,7 @@
 // =====================================================
 // CENA 2: HANGAR
 // =====================================================
+const MENU_INICIAL = { mostrado: false };
 class HangarScene extends Phaser.Scene {
   constructor() { super('Hangar'); }
   create() {
@@ -10,6 +11,9 @@ class HangarScene extends Phaser.Scene {
     this.build();
     this.time.addEvent({ delay: 10000, loop: true, callback: () => writeSave(SAVE) });
     this.showSaveWarning();
+    aplicarPrefs(this.game);
+    // menu principal só quando o jogo abre (voltar de uma partida cai direto no hangar)
+    if (!MENU_INICIAL.mostrado) { MENU_INICIAL.mostrado = true; abrirMenuPrincipal(this); }
   }
   // Aviso sobre o save (sem localStorage ou save corrompido), só na primeira vez
   showSaveWarning() {
@@ -33,6 +37,8 @@ class HangarScene extends Phaser.Scene {
     // códex (armas, itens e combos descobertos) e conquistas
     const nCq = CONQUISTAS.filter((c) => SAVE.conquistas[c.id]).length;
     this.keep(makeButton(this, 92, 30, 150, 30, 'CÓDEX', () => abrirCodex(this), { size: 14, color: 0x312e81, stroke: 0x818cf8 }));
+    this.keep(makeButton(this, W - 92, 30, 150, 30, 'MENU', () => abrirMenuPrincipal(this), { size: 14 }));
+    this.keep(makeButton(this, W - 92, 68, 150, 30, 'CONFIGURAÇÕES', () => abrirConfiguracoes(this), { size: 13 }));
     this.keep(makeButton(this, 92, 68, 150, 30, 'CONQUISTAS ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(this), { size: 13, color: 0x14532d, stroke: 0x4ade80 }));
 
     SHIPS.forEach((s, i) => {

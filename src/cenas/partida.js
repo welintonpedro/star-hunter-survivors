@@ -25,7 +25,6 @@ class GameScene extends Phaser.Scene {
     // bônus permanentes das conquistas (src/dados/conquistas.js)
     this.bonusCq = bonusDasConquistas(SAVE);
     this.xpMult = 1 + this.bonusCq.xp; this.creditMult = 1 + this.bonusCq.creditos;
-    this.trocasPendentes = [];
     this.ultimoDanoTempo = 0; this.progressoTimer = 1; this.bausSubchefe = 0; this.chanceArmaTravada = CHANCE_ARMA_TRAVADA;
     this.filaAvisos = []; this.avisoAtivo = false;
     this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
@@ -575,7 +574,7 @@ class GameScene extends Phaser.Scene {
     this.fpsTimer = (this.fpsTimer || 0) - dt;
     if (this.fpsTimer <= 0) {
       this.fpsTimer = 2;
-      this.efeitosReduzidos = this.game.loop.actualFps < 40;
+      this.efeitosReduzidos = PREFS.efeitosReduzidos || this.game.loop.actualFps < 40;   // escolha do jogador ou jogo lento
       this.far.setVisible(!this.efeitosReduzidos);   // jogo lento: some a camada de estrelas distantes
     }
     this.minimapTimer -= dt;
@@ -1007,7 +1006,7 @@ class GameScene extends Phaser.Scene {
     const mult = this.gal.rewardMult * this.creditMult;
     if (!e.semRecompensa) {
       // explodiu sozinho (kamikaze, bomba-relógio) não dá recompensa nem efeito de morte
-      this.runCredits += e.reward * mult;
+      if (e.isElite || e.isBoss) this.runCredits += e.reward * mult;   // inimigo comum não dá créditos (RN-56)
       this.kills++;
       SAVE.stats.abates++;
       if (e.isElite) SAVE.stats.subchefes++;
@@ -1027,17 +1026,8 @@ class GameScene extends Phaser.Scene {
   breakRock(r) {
     this.boom(r.x, r.y, 10, r.crystal ? 0x22d3ee : 0xa8a29e);
     r.disableBody(true, true);
-    if (r.crystal) {
-      // arma travada só sai de baú de subchefe e de locais únicos (RN-35): cristal dá baú comum
-      this.dropPickup(r.x, r.y, 'chest');
-      return;
-    }
-    const roll = Math.random();
-    if (roll < 0.3) this.dropPickup(r.x, r.y, 'heal');
-    else if (roll < 0.52) this.dropPickup(r.x, r.y, 'coin');
-    else if (roll < 0.6) this.dropPickup(r.x, r.y, 'magnet');
-    else if (roll < 0.65) this.dropPickup(r.x, r.y, 'bomb');
-    else if (roll < 0.85) this.dropGem(r.x, r.y, 5);
+    // meteoros só dão créditos; cristal dá mais (RN-55, valores em src/config.js)
+    this.dropPickup(r.x, r.y, 'coin', r.crystal ? CREDITOS_CRISTAL : CREDITOS_METEORO);
   }
 
   // Faíscas de explosão: vêm de um estoque reaproveitado (pooling), sem criar e destruir
@@ -1413,11 +1403,11 @@ class GameScene extends Phaser.Scene {
       this.tweens.killTweensOf(p);
       p.destroy();
       if (t === 'heal') { this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3); this.floatText(px, py, '+VIDA', '#f87171'); }
-      else if (t === 'coin') { const v = 15 * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
+      else if (t === 'coin') { const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
       else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, 'ÍMÃ TOTAL!', '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
       else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
-      else if (t === 'weapon') this.gainHiddenWeapon(extra);
+      else if (t === 'weapon') this.contarArmaAchada(extra);
     });
   }
   floatText(x, y, text, color) {
@@ -1431,14 +1421,6 @@ class GameScene extends Phaser.Scene {
     this.enemies.children.iterate((e) => { if (e && e.active && Math.hypot(e.x - px, e.y - py) < 650) list.push(e); });
     list.forEach((e) => this.damageTarget(e, e.isBoss || e.isElite ? e.maxHp * 0.25 : e.hp + 1));
     this.floatText(px, py, 'BOMBA!', '#fb923c');
-  }
-
-  gainHiddenWeapon(id) {
-    this.contarArmaAchada(id);
-    const res = this.addWeapon(id);
-    if (res === 'new') this.banner('ARMA ESCONDIDA ENCONTRADA!\n' + WEAPONS[id].name, '#f0abfc');
-    else if (res === 'up') this.banner(WEAPONS[id].name + ' melhorou!', '#f0abfc');
-    else { this.trocasPendentes.push(id); this.openNextModal(); }   // sem espaço: trocar ou descartar
   }
 
   // Arma travada achada: soma no save; na 3ª vez passa a aparecer nas cartas (RN-35)
@@ -1514,7 +1496,7 @@ class GameScene extends Phaser.Scene {
           this.scanBar.fillStyle(0x22d3ee, 1).fillRect(p.x - 48, barY + 2, 96 * Math.min(1, p.scan / 1.5), 6);
           if (p.scan >= 1.5) {
             p.done = true; p.label.setText(p.name + ' (explorado)').setColor('#94a3b8');
-            if (p.weapon) this.gainHiddenWeapon(p.weapon);
+            if (p.weapon && !armaLiberada(SAVE, p.weapon)) this.contarArmaAchada(p.weapon);   // só a pista: a arma vem nas cartas (RN-55)
             else this.recompensaDeLocal(p, p.type === 'planet' ? 14 : 8, p.type === 'planet' ? 120 : 70);
           }
         } else if (p.scan > 0) p.scan = Math.max(0, p.scan - dt);
@@ -1611,7 +1593,6 @@ class GameScene extends Phaser.Scene {
   // ---------- JANELAS (subir de nível / baú) ----------
   openNextModal() {
     if (this.modal || this.ended) return;
-    if (this.trocasPendentes.length) { this.abrirTroca(this.trocasPendentes.shift()); return; }
     if (this.pendingChests > 0) { this.pendingChests--; this.openChest(); return; }
     if (this.pendingLevels > 0) { this.pendingLevels--; this.openLevelUp(); return; }
     this.paused = false;
@@ -1639,16 +1620,6 @@ class GameScene extends Phaser.Scene {
     } else if (m.kind === 'chest') {
       if (m.fase === 'escolher' && i >= 0 && i < 3) this.abrirBauEscolhido(i);
       else if (m.fase === 'revelado' && i === 0) this.closeModal();
-    } else if (m.kind === 'troca') {
-      const op = m.opcoes[i];
-      if (op === undefined) return;
-      if (op !== 'descartar') {
-        const velha = this.weapons[op].id;
-        this.weapons[op] = { id: m.id, level: 1, evolved: false, timer: 0.3 };
-        this.refreshInventory();
-        this.banner(WEAPONS[velha].name + ' → ' + WEAPONS[m.id].name, '#f0abfc');
-      }
-      this.closeModal();
     }
   }
   openLevelUp() {
@@ -1740,8 +1711,9 @@ class GameScene extends Phaser.Scene {
       this.cameras.main.flash(300, 240, 171, 252);
     } else {
       for (let k = 0; k < c.melhorias; k++) {
-        const opts = this.upgradeOptions().filter((o) => o.level > 1);
-        let pool = opts.length ? opts : this.upgradeOptions();
+        const semArmaNova = this.upgradeOptions().filter((o) => !(o.kind === 'weapon' && o.level === 1));   // arma nova só nas cartas de nível
+        const opts = semArmaNova.filter((o) => o.level > 1);
+        let pool = opts.length ? opts : semArmaNova;
         if (!pool.length) pool = this.opcoesSobrecarga();
         const o = pool.length ? Phaser.Utils.Array.GetRandom(pool) : { kind: 'gold' };
         this.applyOption(o);
@@ -1751,10 +1723,8 @@ class GameScene extends Phaser.Scene {
         else ganhos.push({ icone: 'coin', texto: '+' + fmt(25 * this.gal.rewardMult) + ' créditos' });
       }
       if (c.arma) {
-        this.contarArmaAchada(c.arma);
-        const res = this.addWeapon(c.arma);
-        if (res === 'full') this.trocasPendentes.push(c.arma);
-        ganhos.push({ icone: iconeDe(c.arma), texto: (res === 'full' ? 'Achou: ' : 'Arma nova: ') + WEAPONS[c.arma].name });
+        this.contarArmaAchada(c.arma);   // só a pista; a arma passa a sair nas cartas depois de 3 achados
+        ganhos.push({ icone: iconeDe(c.arma), texto: 'Pista: ' + WEAPONS[c.arma].name + ' ' + Math.min(ACHADOS_PARA_LIBERAR, (SAVE.stats.armasAchadas[c.arma] || 0)) + '/' + ACHADOS_PARA_LIBERAR });
       }
       if (c.raridade === 'epico') { this.hp = this.mods.maxHp; ganhos.push({ icone: 'heal', texto: 'Vida cheia' }); }
       const cred = c.creditos * this.gal.rewardMult * this.creditMult;
@@ -1792,31 +1762,6 @@ class GameScene extends Phaser.Scene {
     m.fase = 'revelado';
   }
 
-  // ---------- SEM ESPAÇO: TROCAR OU DESCARTAR A ARMA NOVA ----------
-  abrirTroca(id) {
-    this.pauseForModal();
-    const D = 200, parts = [], fixo = (o, d) => { parts.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
-    fixo(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
-    fixo(this.add.text(W / 2, 70, 'SEM ESPAÇO PARA ARMAS', { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#fde047', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5), 2);
-    fixo(this.add.image(W / 2 - 110, 130, iconeDe(id)).setDisplaySize(52, 52), 2);
-    fixo(this.add.text(W / 2 - 75, 130, 'Nova: ' + WEAPONS[id].name + '\nTrocar por qual arma? Ou descartar a nova.', { fontFamily: 'Arial', fontSize: '15px', color: '#ffffff' }).setOrigin(0, 0.5), 2);
-    // o poder da nave (1º espaço) não pode ser trocado
-    const opcoes = this.weapons.map((w, k) => k).filter((k) => !WEAPONS[this.weapons[k].id].poder);
-    opcoes.push('descartar');
-    opcoes.forEach((op, k) => {
-      const x = W / 2 + (k - (opcoes.length - 1) / 2) * 190, y = H / 2 + 50;
-      const descartar = op === 'descartar';
-      const w = descartar ? null : this.weapons[op];
-      const btn = makeButton(this, x, y, 170, 200, '', () => this.modalPick(k), { fixed: true, depth: D + 1, color: descartar ? 0x450a0a : 0x1e1b4b, stroke: descartar ? 0xf87171 : 0x818cf8 });
-      parts.push(btn);
-      fixo(this.add.text(x - 72, y - 92, String(k + 1), { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8', fontStyle: 'bold' }), 2);
-      const im = fixo(this.add.image(x, y - 35, descartar ? iconeDe(id) : iconeDe(w.id, w.evolved)).setDisplaySize(64, 64), 2);
-      if (descartar) im.setTint(0x64748b);
-      fixo(this.add.text(x, y + 25, descartar ? 'DESCARTAR' : 'TROCAR', { fontFamily: 'Arial', fontSize: '12px', color: descartar ? '#fca5a5' : '#fde68a', fontStyle: 'bold' }).setOrigin(0.5), 2);
-      fixo(this.add.text(x, y + 50, descartar ? 'Fica sem a ' + WEAPONS[id].name : WEAPONS[w.id].name + (w.evolved ? ' ★' : ' Nv ' + w.level), { fontFamily: 'Arial', fontSize: '13px', color: '#ffffff', align: 'center', wordWrap: { width: 150 } }).setOrigin(0.5, 0), 2);
-    });
-    this.modal = { kind: 'troca', id, opcoes, parts };
-  }
 
   // ---------- DANO NO JOGADOR ----------
   onPlayerTouch(p, e) {

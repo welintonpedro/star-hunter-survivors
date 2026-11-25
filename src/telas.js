@@ -84,3 +84,95 @@ function abrirConquistas(scene, aoFechar) {
   });
   return t.fechar;
 }
+
+// ============ MENU PRINCIPAL (aparece ao abrir o jogo, por cima do hangar) ============
+// Continuar = hangar com o progresso; Novo jogo = apaga tudo (com confirmação);
+// Conquistas; Configurações (RN-57).
+function _temProgresso() {
+  return SAVE.credits > 0 || Object.keys(SAVE.owned).length > 1 || SAVE.stats.tempoTotal > 0 ||
+    Object.keys(SAVE.conquistas).length > 0 || Object.values(SAVE.meta).some((v) => v > 0);
+}
+function abrirMenuPrincipal(scene, aoContinuar) {
+  const D = 1000, partes = [];
+  const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+  const fechar = () => partes.forEach((p) => p.destroy());
+  fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x050814, 1).setInteractive());
+  fixo(scene.add.tileSprite(0, 0, W, H, 'stars_far').setOrigin(0).setAlpha(0.6));
+  fixo(scene.add.image(W / 2, 160, 'ship_falcao').setScale(2.2), 1);
+  fixo(scene.add.text(W / 2, 70, 'STAR HUNTER SURVIVORS', {
+    fontFamily: 'Arial Black, Arial', fontSize: '40px', color: '#fde047', stroke: '#7c2d12', strokeThickness: 7
+  }).setOrigin(0.5), 1);
+  const botao = (y, rotulo, acao, cor, borda) => {
+    const b = makeButton(scene, W / 2, y, 280, 46, rotulo, acao, { fixed: true, depth: D + 2, color: cor, stroke: borda, size: 18 });
+    partes.push(b);
+    return b;
+  };
+  const progresso = _temProgresso();
+  botao(250, progresso ? 'CONTINUAR' : 'JOGAR', () => { fechar(); if (aoContinuar) aoContinuar(); }, 0x166534, 0x4ade80);
+  botao(308, 'NOVO JOGO', () => {
+    if (!progresso) { fechar(); if (aoContinuar) aoContinuar(); return; }
+    _confirmarNovoJogo(scene, () => { fechar(); scene.scene.restart(); });
+  }, 0x7f1d1d, 0xfca5a5);
+  const nCq = CONQUISTAS.filter((c) => SAVE.conquistas[c.id]).length;
+  botao(366, 'CONQUISTAS  ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(scene), 0x14532d, 0x4ade80);
+  botao(424, 'CONFIGURAÇÕES', () => abrirConfiguracoes(scene));
+  fixo(scene.add.text(W / 2, H - 24, 'Mover: WASD/setas ou arrastar  •  Escolhas: 1/2/3  •  Pausa: ESC ou P', {
+    fontFamily: 'Arial', fontSize: '12px', color: '#64748b'
+  }).setOrigin(0.5), 1);
+  return { partes, fechar };
+}
+
+function _confirmarNovoJogo(scene, aoApagar) {
+  const D = 1100, partes = [];
+  const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+  const fechar = () => partes.forEach((p) => p.destroy());
+  fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
+  fixo(scene.add.rectangle(W / 2, H / 2, 520, 230, 0x1c0a0a).setStrokeStyle(3, 0xfca5a5), 1);
+  fixo(scene.add.text(W / 2, H / 2 - 72, 'APAGAR TODO O PROGRESSO?', { fontFamily: 'Arial Black, Arial', fontSize: '22px', color: '#fca5a5' }).setOrigin(0.5), 2);
+  fixo(scene.add.text(W / 2, H / 2 - 22, 'Créditos, naves, melhorias, combos e conquistas\nvoltam ao zero. Isso não pode ser desfeito.', {
+    fontFamily: 'Arial', fontSize: '14px', color: '#fee2e2', align: 'center'
+  }).setOrigin(0.5), 2);
+  partes.push(makeButton(scene, W / 2 - 115, H / 2 + 60, 200, 40, 'SIM, APAGAR', () => {
+    SAVE = saveInicial(Date.now());
+    writeSave(SAVE);
+    fechar();
+    aoApagar();
+  }, { fixed: true, depth: D + 3, color: 0x991b1b, stroke: 0xfca5a5, size: 15 }));
+  partes.push(makeButton(scene, W / 2 + 115, H / 2 + 60, 200, 40, 'CANCELAR', fechar, { fixed: true, depth: D + 3, size: 15 }));
+}
+
+// Configurações: volume, efeitos reduzidos e tela cheia
+function abrirConfiguracoes(scene, aoFechar) {
+  const D = 1100, partes = [];
+  const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+  const fechar = () => { partes.forEach((p) => p.destroy()); if (aoFechar) aoFechar(); };
+  fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setInteractive());
+  fixo(scene.add.rectangle(W / 2, H / 2, 480, 330, 0x0b1220).setStrokeStyle(3, 0x60a5fa), 1);
+  fixo(scene.add.text(W / 2, H / 2 - 135, 'CONFIGURAÇÕES', { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#a5f3fc' }).setOrigin(0.5), 2);
+  const opc = { fixed: true, depth: D + 3, size: 15 };
+  // volume: - e + em passos de 10%
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 75, 'Volume dos sons', { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const txtVol = fixo(scene.add.text(W / 2 + 120, H / 2 - 75, '', { fontFamily: 'Arial', fontSize: '16px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 2);
+  const mostrarVol = () => txtVol.setText(Math.round(PREFS.volume * 100) + '%');
+  const mudarVol = (d) => { PREFS.volume = Math.round(Math.min(1, Math.max(0, PREFS.volume + d)) * 10) / 10; salvarPrefs(); aplicarPrefs(scene.game); mostrarVol(); };
+  partes.push(makeButton(scene, W / 2 + 60, H / 2 - 75, 40, 34, '−', () => mudarVol(-0.1), opc));
+  partes.push(makeButton(scene, W / 2 + 180, H / 2 - 75, 40, 34, '+', () => mudarVol(0.1), opc));
+  mostrarVol();
+  // efeitos reduzidos
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 15, 'Efeitos reduzidos\n(menos faíscas, ajuda celular fraco)', { fontFamily: 'Arial', fontSize: '14px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const bEfeitos = makeButton(scene, W / 2 + 120, H / 2 - 15, 140, 34, '', () => {
+    PREFS.efeitosReduzidos = !PREFS.efeitosReduzidos; salvarPrefs(); rotuloEfeitos();
+  }, opc);
+  const rotuloEfeitos = () => bEfeitos.setLabel(PREFS.efeitosReduzidos ? 'LIGADO' : 'DESLIGADO');
+  rotuloEfeitos();
+  partes.push(bEfeitos);
+  // tela cheia (o navegador só deixa ligar com um clique do jogador)
+  fixo(scene.add.text(W / 2 - 190, H / 2 + 45, 'Tela cheia', { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const bTela = makeButton(scene, W / 2 + 120, H / 2 + 45, 140, 34, scene.scale.isFullscreen ? 'LIGADA' : 'DESLIGADA', () => {
+    if (scene.scale.isFullscreen) scene.scale.stopFullscreen(); else scene.scale.startFullscreen();
+    scene.time.delayedCall(150, () => bTela.setLabel(scene.scale.isFullscreen ? 'LIGADA' : 'DESLIGADA'));
+  }, opc);
+  partes.push(bTela);
+  partes.push(makeButton(scene, W / 2, H / 2 + 125, 160, 34, 'FECHAR', fechar, opc));
+  return { partes, fechar };
+}
