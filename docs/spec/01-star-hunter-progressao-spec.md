@@ -85,7 +85,8 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - **RN-39** Ao desbloquear, aparece um aviso pequeno no canto, sem pausar o jogo. [SUPOSIÇÃO]
 
 ### 2.10 O que continua igual
-- **RN-40** Modo automático (rende 60%), progresso offline, hangar com melhorias permanentes, 3 naves e 3 galáxias. [SUPOSIÇÃO]
+- **RN-40** Modo automático (rende 60%), hangar com melhorias permanentes, 3 naves e 3 galáxias. [SUPOSIÇÃO]
+- **RN-48** Não existe ganho de créditos com o jogo fechado (progresso offline). A melhoria "Drones de Coleta" sai do hangar; quem já tinha comprado recebe os créditos de volta (save versão 3). [DECIDIDO em 25/11/2026]
 
 ### 2.11 Base técnica e dados
 - **RN-41** O projeto passa a viver no GitHub e é trabalhado com o Claude Code. [DECIDIDO]
@@ -112,7 +113,7 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 | **Fim de partida** | Vitória (sobreviveu até 30:00 → galáxia conquistada, nave/galáxia liberada) ou derrota (tempo sobrevivido, abates, créditos). |
 
 ### 3.2 Dados salvos no navegador
-- Tudo o que já é salvo hoje (créditos, naves, melhorias, progresso offline).
+- Tudo o que já é salvo hoje (créditos, naves, melhorias).
 - Combos descobertos.
 - Conquistas desbloqueadas e contadores (ex.: quantas vezes cada arma travada foi achada).
 - Armas liberadas nas cartas.
@@ -148,6 +149,7 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - Novas galáxias além das 3.
 - Novas armas comuns além das 6 atuais (exceto os 3 poderes exclusivos).
 - Loja com dinheiro real.
+- Ganhar créditos com o jogo fechado (progresso offline): removido a pedido do dono.
 - Converter o save da v0.2 (do Game Creator AI) para o link novo.
 
 ---
@@ -160,7 +162,7 @@ Cada entrega deixa o jogo jogável e testável sozinha.
 - Leva a v0.2 para o repositório, dividida em arquivos; publica a versão de teste no GitHub Pages.
 - Adiciona número de versão ao save e aviso quando não há localStorage.
 - Adiciona o modo de teste (avançar relógio).
-- **Cobre:** RN-41, RN-42, RN-43, RN-44, RN-45, RN-40.
+- **Cobre:** RN-41, RN-42, RN-43, RN-44, RN-45, RN-40, RN-48.
 - **Valor sozinha:** o mesmo jogo de hoje, guardado com histórico e jogável pelo celular via link.
 
 ### E2 — Partida de 30 minutos

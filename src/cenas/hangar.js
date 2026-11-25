@@ -8,8 +8,6 @@ class HangarScene extends Phaser.Scene {
     this.stars = this.add.tileSprite(0, 0, W, H, 'stars_far').setOrigin(0).setAlpha(0.6);
     this.items = [];
     this.build();
-    const off = this.registry.get('offline');
-    if (off && off.credits > 0) { this.registry.set('offline', null); this.showOffline(off); }
     this.time.addEvent({ delay: 10000, loop: true, callback: () => writeSave(SAVE) });
     this.showSaveWarning();
   }
@@ -66,24 +64,13 @@ class HangarScene extends Phaser.Scene {
     this.keep(this.add.text(W / 2, 382, 'MELHORIAS PERMANENTES', { fontFamily: 'Arial', fontSize: '15px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5));
     META_UPGRADES.forEach((u, i) => {
       const lvl = SAVE.meta[u.id] || 0, cost = metaCost(u, lvl), can = SAVE.credits >= cost;
-      this.keep(makeButton(this, 112 + i * 184, 432, 172, 62, u.name + '  Nv ' + lvl + '\n' + u.desc + '\n' + fmt(cost) + ' créditos', () => {
+      this.keep(makeButton(this, W / 2 + (i - (META_UPGRADES.length - 1) / 2) * 184, 432, 172, 62, u.name + '  Nv ' + lvl + '\n' + u.desc + '\n' + fmt(cost) + ' créditos', () => {
         SAVE.credits -= cost; SAVE.meta[u.id] = lvl + 1; writeSave(SAVE); this.build();
       }, { disabled: !can, size: 12 }));
     });
     this.keep(this.add.text(W / 2, 520, 'Mover: WASD/setas ou arrastar  •  Automático: ESPAÇO  •  Escolhas: 1/2/3', {
       fontFamily: 'Arial', fontSize: '11px', color: '#64748b'
     }).setOrigin(0.5));
-  }
-  showOffline(off) {
-    const parts = [];
-    parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setDepth(100).setInteractive());
-    parts.push(this.add.rectangle(W / 2, H / 2, 420, 200, 0x0f172a).setStrokeStyle(3, 0x22d3ee).setDepth(101));
-    const h = Math.floor(off.mins / 60), m = Math.floor(off.mins % 60);
-    parts.push(this.add.text(W / 2, H / 2 - 30, 'BEM-VINDO DE VOLTA!\n\nSuas naves farmaram por ' + h + 'h ' + m + 'min\n+' + fmt(off.credits) + ' créditos', {
-      fontFamily: 'Arial', fontSize: '18px', color: '#ffffff', align: 'center'
-    }).setOrigin(0.5).setDepth(102));
-    const ok = makeButton(this, W / 2, H / 2 + 60, 140, 36, 'COLETAR', () => { parts.forEach((p) => p.destroy()); ok.destroy(); },
-      { color: 0x166534, stroke: 0x4ade80, depth: 103 });
   }
 }
 

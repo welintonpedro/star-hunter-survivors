@@ -67,10 +67,7 @@ class BootScene extends Phaser.Scene {
     starTexture(this, 'stars_near', 256, 22, 2);
     nebulaTexture(this, 'nebula');
 
-    const off = computeOffline();
-    if (off.credits > 0) SAVE.credits += off.credits;
     writeSave(SAVE);
-    this.registry.set('offline', off);
     this.scene.start('Hangar');
   }
 }

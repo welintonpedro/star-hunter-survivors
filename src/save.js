@@ -28,15 +28,3 @@ const AVISO_SAVE = {
 
 function writeSave(s) { gravarSave(STORAGE, s, Date.now()); }
 window.addEventListener('beforeunload', () => writeSave(SAVE));
-
-function idleRatePerMin() {
-  let rate = 0;
-  SHIPS.forEach((sh) => { if (SAVE.owned[sh.id]) rate += SAVE.bestRate[sh.galaxy] || 0; });
-  return rate * OFFLINE_EFFICIENCY * (1 + SAVE.meta.idle * 0.25);
-}
-function computeOffline() {
-  const now = Date.now();
-  const mins = Math.min(OFFLINE_CAP_HOURS * 60, Math.max(0, (now - (SAVE.lastSeen || now)) / 60000));
-  if (mins < 1) return { mins: 0, credits: 0 };
-  return { mins, credits: Math.floor(idleRatePerMin() * mins) };
-}

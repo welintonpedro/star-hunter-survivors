@@ -5,12 +5,14 @@
 const SAVE_KEY = 'star_hunter_survivors_save_v1';
 // Versão do formato do save. A v0.2 não tinha número (conta como 1).
 // Ao mudar o formato no futuro, suba este número e converta em converterSave().
-const SAVE_VERSION = 2;
+//   2 → save ganhou número de versão (E1)
+//   3 → ganho offline removido: sai a melhoria "Drones de Coleta" (meta.idle) e o bestRate
+const SAVE_VERSION = 3;
 
 function saveInicial(agora) {
   return {
     versao: SAVE_VERSION, credits: 0, owned: { falcao: true }, cleared: [false, false, false],
-    meta: { dmg: 0, hp: 0, rate: 0, magnet: 0, idle: 0 }, bestRate: [0, 0, 0], lastSeen: agora
+    meta: { dmg: 0, hp: 0, rate: 0, magnet: 0 }, lastSeen: agora
   };
 }
 
@@ -34,21 +36,24 @@ function corrigirSave(bruto, navesValidas, agora) {
   const meta = bruto.meta && typeof bruto.meta === 'object' ? bruto.meta : {};
   Object.keys(s.meta).forEach((k) => { s.meta[k] = inteiroPositivo(meta[k]); });
 
-  const best = Array.isArray(bruto.bestRate) ? bruto.bestRate : [];
-  s.bestRate = s.bestRate.map((_, i) => {
-    const v = best[i];
-    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
-  });
-
   const visto = bruto.lastSeen;
   s.lastSeen = typeof visto === 'number' && Number.isFinite(visto) && visto <= agora ? visto : agora;
   return s;
 }
 
-// Converte formatos antigos para o atual. Hoje só existe o formato sem número (v0.2),
-// que tem os mesmos campos; corrigirSave() já completa o que faltar.
+// Converte formatos antigos para o atual. corrigirSave() depois completa o que faltar
+// e descarta campos que não existem mais (como bestRate).
 function converterSave(bruto) {
-  return bruto;
+  const versao = typeof bruto.versao === 'number' ? bruto.versao : 1;
+  const s = Object.assign({}, bruto);
+  if (versao < 3) {
+    // Devolve os créditos gastos em "Drones de Coleta" (custo do nível n = 120 × 1,6^n)
+    const niveis = inteiroPositivo(s.meta && s.meta.idle);
+    let devolver = 0;
+    for (let n = 0; n < niveis; n++) devolver += Math.floor(120 * Math.pow(1.6, n));
+    s.credits = inteiroPositivo(s.credits) + devolver;
+  }
+  return s;
 }
 
 // Devolve { save, status }. status: 'novo' | 'ok' | 'corrompido' | 'indisponivel'

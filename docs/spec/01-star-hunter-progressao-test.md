@@ -12,7 +12,8 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 - **CA-02** Está pronto quando quem joga pelo link novo atualiza para uma versão nova e continua com os mesmos créditos, naves e melhorias.
 - **CA-03** Está pronto quando, num navegador que não deixa salvar, o jogo roda e avisa uma única vez que o progresso não será guardado.
 - **CA-04** Está pronto quando o modo de teste deixa pular o relógio da partida e não aparece para quem joga normalmente.
-- **CA-05** Está pronto quando automático (60%), progresso offline, hangar, 3 naves e 3 galáxias continuam funcionando como antes.
+- **CA-05** Está pronto quando automático (60%), hangar, 3 naves e 3 galáxias continuam funcionando como antes.
+- **CA-43** Está pronto quando fechar o jogo e voltar horas depois não dá créditos extras, o hangar não mostra mais "Drones de Coleta" e quem tinha comprado essa melhoria recebeu os créditos de volta.
 
 ### E2 — Partida de 30 minutos
 - **CA-06** Está pronto quando a partida tem um relógio que vai até 30:00 e, nessa hora, chega a nave-mãe.
@@ -78,7 +79,8 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | CT-04 | localStorage bloqueado (aba anônima restrita) | Abrir o jogo e jogar 2 partidas | Aviso aparece uma vez só; jogo funciona normalmente |
 | CT-05 | Link sem `?teste=1` | Procurar controles de pular tempo | Não existem |
 | CT-06 | Link com `?teste=1` | Avançar relógio para 9:55 | Partida segue a partir de 9:55 |
-| CT-07 | Automático ligado, jogo fechado 1 h | Reabrir | Progresso offline calculado como na v0.2 |
+| CT-07 | Jogo fechado 1 h | Reabrir | Créditos iguais aos de quando fechou; nenhuma janela de "bem-vindo de volta" |
+| CT-71 | Save versão 2 com Drones de Coleta nível 2 | Abrir o jogo | +312 créditos (120 + 192); melhoria some do hangar |
 
 ### E2
 | ID | Situação | Ação | Resultado esperado |
@@ -242,7 +244,8 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | RN-37 | CA-35 | CT-50 |
 | RN-38 | CA-35, CA-39 | CT-51, CT-57 |
 | RN-39 | CA-36 | CT-51, CT-55 |
-| RN-40 | CA-05 | CT-07 |
+| RN-40 | CA-05 | CT-01 |
+| RN-48 | CA-43 | CT-07, CT-71 |
 | RN-41 | CA-01 | CT-01 |
 | RN-42 | CA-02 | CT-02, CT-03, CT-58 |
 | RN-43 | CA-03 | CT-04 |

@@ -1,5 +1,5 @@
 # Star Hunter Survivors
-Jogo de navinha estilo Vampire Survivors + idle, para navegador.
+Jogo de navinha estilo Vampire Survivors com modo automático, para navegador.
 Um jogador só, sem login; tudo salvo no aparelho.
 
 Rodar: npx serve . e abrir http://localhost:3000

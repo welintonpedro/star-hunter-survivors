@@ -1,6 +1,6 @@
 # Star Hunter Survivors
 
-Jogo de navinha estilo Vampire Survivors + idle, feito em Phaser 3, para navegador.
+Jogo de navinha estilo Vampire Survivors com modo automático, feito em Phaser 3, para navegador.
 
 - **Versão atual:** v0.2 (protótipo trazido do Game Creator AI).
 - **Próxima versão:** v0.3, planejada em `docs/spec/01-star-hunter-progressao-spec.md`.

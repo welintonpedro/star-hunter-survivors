@@ -920,7 +920,10 @@ class GameScene extends Phaser.Scene {
       if (m.target) {
         const want = Math.atan2(m.target.y - m.y, m.target.x - m.x);
         let diff = Phaser.Math.Angle.Wrap(want - m.ang);
-        m.ang += clamp(diff, -6 * dt, 6 * dt);
+        // perto do alvo a curva fica mais fechada; senão o míssil fica girando em volta e erra
+        const perto = clamp(1 - Math.hypot(m.target.x - m.x, m.target.y - m.y) / 250, 0, 1);
+        const giro = 6 + 18 * perto;
+        m.ang += clamp(diff, -giro * dt, giro * dt);
       }
       m.speed = Math.min(480, m.speed + 500 * dt);
       m.x += Math.cos(m.ang) * m.speed * dt; m.y += Math.sin(m.ang) * m.speed * dt;
@@ -1367,9 +1370,6 @@ class GameScene extends Phaser.Scene {
     this.ended = true;
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }
-    const mins = Math.max(1, this.elapsed / 60);
-    const rate = (this.runCredits - this.bonus) / mins;
-    if (rate > (SAVE.bestRate[this.gi] || 0)) SAVE.bestRate[this.gi] = rate;
     this.bankCredits();
 
     const titles = { victory: 'GALÁXIA CONQUISTADA!', dead: 'NAVE DESTRUÍDA', retreat: 'MISSÃO ENCERRADA' };
