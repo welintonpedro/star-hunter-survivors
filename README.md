@@ -1,6 +1,6 @@
 # Star Hunter Survivors
 
-Jogo de navinha estilo Vampire Survivors com modo automático, feito em Phaser 3, para navegador.
+Jogo de navinha estilo Vampire Survivors, feito em Phaser 3, para navegador.
 
 - **Versão atual:** v0.2 (protótipo trazido do Game Creator AI).
 - **Próxima versão:** v0.3, planejada em `docs/spec/01-star-hunter-progressao-spec.md`.
@@ -10,7 +10,7 @@ Jogo de navinha estilo Vampire Survivors com modo automático, feito em Phaser 3
 2. Nesta pasta, rode `npx serve .`
 3. Abra http://localhost:3000 no navegador.
 
-Controles: WASD/setas ou arrastar · ESPAÇO = automático · 1/2/3 = escolher carta.
+Controles: WASD/setas ou arrastar · 1/2/3 = escolher carta.
 
 ## Modo de teste
 Coloque `?teste=1` no fim do link (ex.: http://localhost:3000/?teste=1). Na partida aparecem

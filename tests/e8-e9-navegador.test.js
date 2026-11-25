@@ -54,7 +54,7 @@ test('CT-43/44/46: combo feito fica salvo e aparece no códex de outra nave; os 
   } finally { await j.fechar(); }
 });
 
-test('CT-48: a pausa tem CÓDEX, liga/desliga o AUTO e recolhe a nave', async () => {
+test('CT-48: a pausa tem CÓDEX e recolhe a nave (sem AUTO desde 25/11)', async () => {
   const j = await abrir();
   try {
     await partida(j, 0);
@@ -63,13 +63,11 @@ test('CT-48: a pausa tem CÓDEX, liga/desliga o AUTO e recolhe a nave', async ()
     const r = await G(j.pagina, (clicarSrc) => {
       const g = game.scene.getScene('Game'), clicar = eval(clicarSrc);
       const textos = g.menuPausa.parts.filter((p) => p.type === 'Text').map((p) => p.text);
-      clicar(g.menuPausa.parts, 'AUTO: DESLIGADO');
-      const autoLigado = g.auto;
       clicar(g.menuPausa.parts, 'RECOLHER NAVE');
-      return { textos, autoLigado, acabou: g.ended };
+      return { textos, acabou: g.ended };
     }, CLICAR);
     ['CONTINUAR', 'CÓDEX', 'RECOLHER NAVE'].forEach((t) => assert.ok(r.textos.includes(t), t));
-    assert.equal(r.autoLigado, true);
+    assert.ok(!r.textos.some((t) => t.startsWith('AUTO')), 'não pode ter AUTO');
     assert.equal(r.acabou, true);
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }

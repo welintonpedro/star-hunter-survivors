@@ -10,10 +10,10 @@ class GameScene extends Phaser.Scene {
     this.ship = ship; this.gi = ship.galaxy; this.gal = GALAXIES[this.gi];
 
     // estado da partida
-    this.level = 1; this.xp = 0; this.xpNext = 6;
+    this.level = 1; this.xp = 0; this.xpNext = xpParaProximoNivel(1);
     this.pendingLevels = 0; this.pendingChests = 0; this.modal = null;
     this.elapsed = 0; this.runCredits = 0; this.banked = 0; this.bonus = 0; this.kills = 0;
-    this.auto = false; this.paused = false; this.ended = false;
+    this.paused = false; this.ended = false;
     this.boss = null;
     this.invuln = 0; this.bankTimer = 0;
     this.ringCount = 0; this.swarmCount = 0; this.eliteCount = 0;
@@ -31,7 +31,7 @@ class GameScene extends Phaser.Scene {
     this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
     this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
     this.cullTimer = 0;
-    this.weapons = []; this.passives = {};
+    this.weapons = []; this.passives = {}; this.sobrecargas = {};
     this.orbs = []; this.orbAngle = 0; this.missiles = []; this.discs = [];
     this.minimapTimer = 0;
 
@@ -198,6 +198,10 @@ class GameScene extends Phaser.Scene {
     this.mods.dmg *= 1 + b.dano; this.mods.maxHp *= 1 + b.vida; this.mods.regen += b.regen;
     this.mods.area *= 1 + b.area; this.mods.speed *= 1 + b.velocidade;
     this.mods.cd *= 1 - b.recarga; this.mods.magnet *= 1 + b.coleta;
+    // sobrecargas: melhorias sem fim depois que tudo está no máximo
+    const sc = (k) => (this.sobrecargas[k] || 0) * SOBRECARGAS[k].valor;
+    this.mods.dmg *= 1 + sc('dano'); this.mods.maxHp *= 1 + sc('vida'); this.mods.area *= 1 + sc('area');
+    this.mods.speed *= 1 + sc('velocidade'); this.mods.cd *= 1 - sc('recarga'); this.mods.regen += sc('regen');
     if (oldMax && this.mods.maxHp > oldMax) this.hp += this.mods.maxHp - oldMax;
   }
 
@@ -250,6 +254,16 @@ class GameScene extends Phaser.Scene {
     });
     return opts;
   }
+  // Sobrecargas: só aparecem quando faltam cartas normais (tudo no máximo)
+  opcoesSobrecarga() {
+    const opts = [];
+    Object.keys(SOBRECARGAS).forEach((id) => {
+      const lv = this.sobrecargas[id] || 0, d = SOBRECARGAS[id];
+      if (d.max && lv >= d.max) return;
+      opts.push({ kind: 'sobrecarga', id, level: lv + 1, weight: 1 });
+    });
+    return opts;
+  }
   // Arma comum que pode aparecer nas cartas: não é poder de nave e não está travada
   armaDisponivel(id) {
     const d = WEAPONS[id];
@@ -268,6 +282,7 @@ class GameScene extends Phaser.Scene {
   applyOption(o) {
     if (o.kind === 'weapon') this.addWeapon(o.id);
     else if (o.kind === 'passive') this.addPassive(o.id);
+    else if (o.kind === 'sobrecarga') { this.sobrecargas[o.id] = (this.sobrecargas[o.id] || 0) + 1; this.recalc(); }
     else if (o.kind === 'heal') this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3);
     else if (o.kind === 'gold') this.runCredits += 25 * this.gal.rewardMult;
   }
@@ -284,6 +299,10 @@ class GameScene extends Phaser.Scene {
       const d = PASSIVES[o.id];
       icone = iconeDe(o.id); nome = d.name; efeito = d.desc; nivel = o.level; max = d.max;
       etiqueta = o.level === 1 ? 'ITEM NOVO' : 'ITEM'; cor = 0x042f2e; borda = 0x2dd4bf;
+    } else if (o.kind === 'sobrecarga') {
+      const d = SOBRECARGAS[o.id];
+      icone = iconeDe(d.icone); nome = d.nome; efeito = d.desc + '\n(nível ' + o.level + ')';
+      etiqueta = 'SOBRECARGA'; cor = 0x3b0764; borda = 0xe879f9;
     } else if (o.kind === 'heal') {
       icone = 'heal'; escala = 2.6; nome = 'Kit de Reparo'; efeito = '+30% de vida'; etiqueta = 'CURA';
     } else {
@@ -308,8 +327,6 @@ class GameScene extends Phaser.Scene {
   setupInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D');
-    this.input.keyboard.addCapture('SPACE');
-    this.input.keyboard.on('keydown-SPACE', () => this.toggleAuto());
     this.input.keyboard.on('keydown-ONE', () => this.modalPick(0));
     this.input.keyboard.on('keydown-TWO', () => this.modalPick(1));
     this.input.keyboard.on('keydown-THREE', () => this.modalPick(2));
@@ -378,12 +395,8 @@ class GameScene extends Phaser.Scene {
       this.codexAberto = true;
       abrirCodex(this, () => { this.codexAberto = false; });
     });
-    // automático e recolher nave também na pausa (RN-32)
-    const bAuto = botao(H / 2 + 46, this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO', () => {
-      const m = this.menuPausa; this.menuPausa = null; this.toggleAuto(); this.menuPausa = m;
-      bAuto.setLabel(this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO');
-    });
-    botao(H / 2 + 94, 'RECOLHER NAVE', () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
+    // recolher nave também na pausa (RN-32)
+    botao(H / 2 + 46, 'RECOLHER NAVE', () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
     this.menuPausa = { parts };
   }
   fecharPausa() {
@@ -393,14 +406,6 @@ class GameScene extends Phaser.Scene {
     this.time.paused = false;
     this.tweens.resumeAll();
     if (!this.modal && !this.ended) this.physics.resume();
-  }
-
-  toggleAuto() {
-    if (this.ended || this.menuPausa) return;
-    this.auto = !this.auto;
-    this.autoBtn.setLabel(this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO');
-    this.autoBtn.bg.setFillStyle(this.auto ? 0x166534 : 0x1e3a8a);
-    if (this.modal && this.auto) this.scheduleAutoPick();
   }
 
   // ---------- HUD ----------
@@ -414,9 +419,8 @@ class GameScene extends Phaser.Scene {
     this.add.rectangle(0, H - 10, W, 10, 0x000000, 0.6).setOrigin(0).setScrollFactor(0).setDepth(D);
     this.xpFill = this.add.rectangle(0, H - 10, W, 10, 0x22d3ee).setOrigin(0).setScrollFactor(0).setDepth(D + 1);
 
-    this.autoBtn = makeButton(this, W - 90, 26, 160, 30, 'AUTO: DESLIGADO', () => this.toggleAuto(), { fixed: true, depth: D, size: 13 });
-    makeButton(this, W - 196, 26, 40, 30, 'II', () => this.alternarPausa(), { fixed: true, depth: D, size: 15 });
-    makeButton(this, W - 90, 62, 160, 26, 'RECOLHER NAVE', () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
+    makeButton(this, W - 30, 26, 40, 30, 'II', () => this.alternarPausa(), { fixed: true, depth: D, size: 15 });
+    makeButton(this, W - 140, 26, 160, 30, 'RECOLHER NAVE', () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
 
     this.bossBarBg = this.add.rectangle(W / 2, 54, 400, 14, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setVisible(false);
     this.bossBar = this.add.rectangle(W / 2 - 198, 54, 396, 10, 0xa855f7).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false);
@@ -470,7 +474,7 @@ class GameScene extends Phaser.Scene {
   updateHUD() {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
     this.hpText.setText(Math.ceil(Math.max(0, this.hp)) + ' / ' + Math.ceil(this.mods.maxHp));
-    this.infoText.setText('Nível ' + this.level + '   Abates ' + this.kills + '   Créditos +' + fmt(this.runCredits) + (this.auto ? ' (auto 60%)' : ''));
+    this.infoText.setText('Nível ' + this.level + '   Abates ' + this.kills + '   Créditos +' + fmt(this.runCredits));
     this.timeText.setText(fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
     this.xpFill.setScale(Math.min(1, this.xp / this.xpNext), 1);
     if (this.boss && !this.boss.active) this.boss = this.chefeVivo();
@@ -481,12 +485,8 @@ class GameScene extends Phaser.Scene {
     this.hintText.setText(this.textoDica());
   }
 
-  // Linha de aviso no rodapé: o que vem a seguir, ou o que está esperando o AUTO desligar
+  // Linha de aviso no rodapé: o que vem a seguir
   textoDica() {
-    const chefeEsperando = EVENTOS.chefes.some((c, i) => !this.chefesFeitos[i] && this.elapsed >= c.t);
-    const maeEsperando = !this.naveMae && this.elapsed >= EVENTOS.naveMae;
-    if (this.auto && maeEsperando) return 'Nave-mãe detectada! Desligue o AUTO para enfrentá-la e vencer.';
-    if (this.auto && chefeEsperando) return 'Chefe detectado! Desligue o AUTO para enfrentá-lo.';
     if (this.vitoriaRegistrada) return 'GALÁXIA CONQUISTADA! Resista à nave-mãe o quanto puder.';
     const p = proximoEvento(this.elapsed);
     return p ? p.nome + ' em ' + fmtTime(Math.max(0, p.t - this.elapsed)) : '';
@@ -591,8 +591,7 @@ class GameScene extends Phaser.Scene {
 
   movePlayer() {
     let vx = 0, vy = 0;
-    if (this.auto) { const v = this.autoPilot(); vx = v.x; vy = v.y; }
-    else if (this.joy.active) { vx = this.joy.dx; vy = this.joy.dy; }
+    if (this.joy.active) { vx = this.joy.dx; vy = this.joy.dy; }
     else {
       const c = this.cursors, k = this.keys;
       if (c.left.isDown || k.A.isDown) vx -= 1;
@@ -610,43 +609,6 @@ class GameScene extends Phaser.Scene {
       const alvo = Math.atan2(this.moveDir.y, this.moveDir.x) + Math.PI / 2;
       this.player.rotation = Phaser.Math.Angle.RotateTo(this.player.rotation, alvo, 0.18);
     }
-  }
-
-  // Piloto automático: foge do perigo, coleta gemas e itens, quebra meteoros
-  autoPilot() {
-    let fx = 0, fy = 0;
-    const px = this.player.x, py = this.player.y;
-    this.enemies.children.iterate((e) => {
-      if (!e || !e.active) return;
-      const R = e.isBoss ? 320 : e.isElite ? 260 : 200;
-      const dx = px - e.x, dy = py - e.y, d2 = dx * dx + dy * dy;
-      if (d2 < R * R && d2 > 1) { const d = Math.sqrt(d2), w = (R - d) / R * (e.isBoss || e.isElite ? 3 : 1); fx += dx / d * w; fy += dy / d * w; }
-    });
-    this.ebullets.children.iterate((b) => {
-      if (!b || !b.active) return;
-      const dx = px - b.x, dy = py - b.y, d2 = dx * dx + dy * dy;
-      if (d2 < 150 * 150 && d2 > 1) { const d = Math.sqrt(d2), w = (150 - d) / 150 * 2; fx += dx / d * w; fy += dy / d * w; }
-    });
-    const bh = this.pois.find((p) => p.type === 'blackhole');
-    if (bh) { const dx = px - bh.x, dy = py - bh.y, d = Math.hypot(dx, dy); if (d < 450) { fx += dx / d * 3; fy += dy / d * 3; } }
-    const seek = (x, y, w) => { const dx = x - px, dy = y - py, d = Math.hypot(dx, dy) || 1; fx += dx / d * w; fy += dy / d * w; };
-    let best = null, bd = 600 * 600;
-    this.pickups.children.iterate((p) => { if (!p || !p.active) return; const d2 = (p.x - px) ** 2 + (p.y - py) ** 2; if (d2 < bd) { bd = d2; best = p; } });
-    if (best) seek(best.x, best.y, 0.9);
-    else {
-      let g = null, gd = 350 * 350;
-      this.gems.children.iterate((o) => { if (!o || !o.active) return; const d2 = (o.x - px) ** 2 + (o.y - py) ** 2; if (d2 < gd) { gd = d2; g = o; } });
-      if (g) seek(g.x, g.y, 0.6);
-      else {
-        let r = null, rd = 500 * 500;
-        this.rocks.children.iterate((o) => { if (!o || !o.active) return; const d2 = (o.x - px) ** 2 + (o.y - py) ** 2; if (d2 < rd) { rd = d2; r = o; } });
-        if (r && rd > 160 * 160) seek(r.x, r.y, 0.4);
-      }
-    }
-    // explora locais não visitados aos poucos
-    const target = this.pois.find((p) => !p.done && p.type !== 'blackhole' && p.type !== 'nest');
-    if (target) seek(target.x, target.y, 0.15);
-    return { x: fx, y: fy };
   }
 
   // ---------- NASCIMENTO DE INIMIGOS ----------
@@ -670,14 +632,12 @@ class GameScene extends Phaser.Scene {
     }
     if (quantosAte(t, EVENTOS.cercos) > this.ringCount) { this.ringCount++; this.spawnRing(); }
     if (quantosAte(t, EVENTOS.enxames) > this.swarmCount) { this.swarmCount++; this.spawnSwarm(); }
-    // subchefes vêm no horário, mesmo com o AUTO ligado
+    // subchefes no horário
     if (quantosAte(t, EVENTOS.subchefes) > this.eliteCount) {
       this.eliteCount++;
       const p = this.spawnPoint();
       this.spawnElite(p.x, p.y);
     }
-    // chefes e nave-mãe esperam o AUTO desligar (RN-47)
-    if (this.auto) return;
     EVENTOS.chefes.forEach((c, i) => {
       if (!this.chefesFeitos[i] && t >= c.t) { this.chefesFeitos[i] = true; this.spawnBoss(i); }
     });
@@ -1044,7 +1004,7 @@ class GameScene extends Phaser.Scene {
 
   killEnemy(e) {
     if (!e.active) return;
-    const mult = this.gal.rewardMult * (this.auto ? AUTO_REWARD_MULT : 1) * this.creditMult;
+    const mult = this.gal.rewardMult * this.creditMult;
     if (!e.semRecompensa) {
       // explodiu sozinho (kamikaze, bomba-relógio) não dá recompensa nem efeito de morte
       this.runCredits += e.reward * mult;
@@ -1519,6 +1479,11 @@ class GameScene extends Phaser.Scene {
     const nomeArma = c.premio.arma ? WEAPONS[c.premio.arma].name : '';
     fixo(this.add.text(x, y + 18, textoDoPremio(c.premio, nomeArma), { fontFamily: 'Arial', fontSize: '11px', color: '#bbf7d0' }).setOrigin(0.5));
     this.avisoConquista = partes;
+    // entra deslizando da direita com um "pulo", e sai deslizando de volta
+    partes.forEach((p) => { p.x += 320; });
+    this.tweens.add({ targets: partes, x: '-=320', duration: 350, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: partes[0], scaleX: 1.06, scaleY: 1.06, duration: 160, yoyo: true, repeat: 2, delay: 350 });
+    this.time.delayedCall(3100, () => this.tweens.add({ targets: partes, x: '+=320', duration: 300, ease: 'Quad.easeIn' }));
     this.time.delayedCall(3500, () => {
       partes.forEach((p) => p.destroy());
       this.avisoAtivo = false;
@@ -1637,7 +1602,7 @@ class GameScene extends Phaser.Scene {
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
-      this.xpNext = Math.floor(this.xpNext * 1.22 + 3);
+      this.xpNext = xpParaProximoNivel(this.level);   // curva em src/dados/progressao.js
       this.pendingLevels++;
     }
     if (this.pendingLevels > 0) this.openNextModal();
@@ -1661,7 +1626,6 @@ class GameScene extends Phaser.Scene {
     if (!this.modal) return;
     this.modal.parts.forEach((p) => p.destroy());
     this.modal = null;
-    if (this.autoPickEvt) { this.autoPickEvt.remove(false); this.autoPickEvt = null; }
     this.openNextModal();
   }
   modalPick(i) {
@@ -1687,23 +1651,10 @@ class GameScene extends Phaser.Scene {
       this.closeModal();
     }
   }
-  scheduleAutoPick() {
-    if (this.autoPickEvt) this.autoPickEvt.remove(false);
-    this.autoPickEvt = this.time.delayedCall(this.modal && this.modal.kind === 'chest' ? 1400 : 900, () => {
-      if (!this.modal || !this.auto) return;
-      if (this.modal.kind === 'chest') { this.modalPick(this.modal.fase === 'escolher' ? Math.floor(Math.random() * 3) : 0); return; }
-      if (this.modal.kind === 'troca') { this.modalPick(this.modal.opcoes.length - 1); return; }   // piloto descarta
-      // o piloto prefere completar combos
-      const opts = this.modal.options;
-      let idx = opts.findIndex((o) => o.kind === 'passive' && comboWeaponFor(o.id) && this.hasWeapon(comboWeaponFor(o.id)));
-      if (idx < 0) idx = opts.findIndex((o) => o.kind === 'weapon');
-      this.modalPick(idx < 0 ? 0 : idx);
-    });
-  }
-
   openLevelUp() {
     this.pauseForModal();
     let options = this.pickWeighted(this.upgradeOptions(), 3);
+    if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
     if (!options.length) options = [{ kind: 'heal' }, { kind: 'gold' }];
     const parts = [];
     parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(200).setInteractive());
@@ -1712,9 +1663,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     const n = options.length;
     options.forEach((o, i) => parts.push(...this.criarCarta(o, i, W / 2 + (i - (n - 1) / 2) * 250, H / 2 + 20)));
-    if (this.auto) parts.push(this.add.text(W / 2, H - 36, 'Piloto automático vai escolher sozinho...', { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8' }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     this.modal = { kind: 'level', options, parts };
-    if (this.auto) this.scheduleAutoPick();
   }
 
   // ---------- BAÚ: 3 BAÚS FECHADOS, O JOGADOR ESCOLHE UM ----------
@@ -1753,9 +1702,7 @@ class GameScene extends Phaser.Scene {
       const balanco = this.tweens.add({ targets: bau, angle: { from: -7, to: 7 }, yoyo: true, repeat: -1, duration: 260 + i * 40, delay: i * 90, ease: 'Sine.easeInOut' });
       return { x, y, bau, brilho, balanco };
     });
-    if (this.auto) fixo(this.add.text(W / 2, H - 50, 'Piloto automático vai escolher sozinho...', { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8' }).setOrigin(0.5), 2);
     this.modal = { kind: 'chest', fase: 'escolher', conteudos, combo: evo.length ? evo[0] : null, baus, parts, fixo, titulo, subtitulo };
-    if (this.auto) this.scheduleAutoPick();
   }
 
   // Abre o baú escolhido: pulo, clarão, raios de luz e a recompensa; os outros mostram o que tinham
@@ -1794,11 +1741,13 @@ class GameScene extends Phaser.Scene {
     } else {
       for (let k = 0; k < c.melhorias; k++) {
         const opts = this.upgradeOptions().filter((o) => o.level > 1);
-        const pool = opts.length ? opts : this.upgradeOptions();
+        let pool = opts.length ? opts : this.upgradeOptions();
+        if (!pool.length) pool = this.opcoesSobrecarga();
         const o = pool.length ? Phaser.Utils.Array.GetRandom(pool) : { kind: 'gold' };
         this.applyOption(o);
         if (o.kind === 'weapon') ganhos.push({ icone: iconeDe(o.id), texto: WEAPONS[o.id].name + ' Nv ' + o.level });
         else if (o.kind === 'passive') ganhos.push({ icone: iconeDe(o.id), texto: PASSIVES[o.id].name + ' Nv ' + o.level });
+        else if (o.kind === 'sobrecarga') ganhos.push({ icone: iconeDe(SOBRECARGAS[o.id].icone), texto: SOBRECARGAS[o.id].nome + ' ' + o.level });
         else ganhos.push({ icone: 'coin', texto: '+' + fmt(25 * this.gal.rewardMult) + ' créditos' });
       }
       if (c.arma) {
@@ -1841,7 +1790,6 @@ class GameScene extends Phaser.Scene {
     const btn = makeButton(this, W / 2, H - 28, 180, 34, 'CONTINUAR', () => this.modalPick(0), { fixed: true, depth: 205, color: 0x166534, stroke: 0x4ade80 });
     m.parts.push(btn);
     m.fase = 'revelado';
-    if (this.auto) this.scheduleAutoPick();
   }
 
   // ---------- SEM ESPAÇO: TROCAR OU DESCARTAR A ARMA NOVA ----------
@@ -1868,7 +1816,6 @@ class GameScene extends Phaser.Scene {
       fixo(this.add.text(x, y + 50, descartar ? 'Fica sem a ' + WEAPONS[id].name : WEAPONS[w.id].name + (w.evolved ? ' ★' : ' Nv ' + w.level), { fontFamily: 'Arial', fontSize: '13px', color: '#ffffff', align: 'center', wordWrap: { width: 150 } }).setOrigin(0.5, 0), 2);
     });
     this.modal = { kind: 'troca', id, opcoes, parts };
-    if (this.auto) this.scheduleAutoPick();
   }
 
   // ---------- DANO NO JOGADOR ----------

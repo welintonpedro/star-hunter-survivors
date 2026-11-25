@@ -61,29 +61,17 @@ test('CT-67: os mísseis atacam meteoro colado quando não há inimigo perto', a
   } finally { await fechar(); }
 });
 
-test('CT-68/69: com o automático ligado o chefe espera; ao desligar, ele aparece. Subchefe vem mesmo no auto', async () => {
+test('CT-68/69: subchefe vem aos 3:00 e chefe aos 10:00 (modo AUTO removido a pedido do dono em 25/11)', async () => {
   const { pagina, erros, fechar } = await partida(0);
   try {
-    await G(pagina, () => { const g = game.scene.getScene('Game'); g.toggleAuto(); g.testeIrPara(178); });
+    await G(pagina, () => game.scene.getScene('Game').testeIrPara(178));
     await esperarRelogio(pagina, 181);
     const sub = await G(pagina, () => { let n = 0; game.scene.getScene('Game').enemies.children.iterate((e) => { if (e && e.active && e.isElite) n++; }); return n; });
-    assert.ok(sub >= 1, 'o subchefe dos 3:00 deveria aparecer mesmo no auto');
-
+    assert.ok(sub >= 1, 'o subchefe dos 3:00 deveria aparecer');
     await G(pagina, () => game.scene.getScene('Game').testeIrPara(598));
     await esperarRelogio(pagina, 601);
-    let estado = await G(pagina, () => {
-      const g = game.scene.getScene('Game');
-      let chefes = 0; g.enemies.children.iterate((e) => { if (e && e.active && e.isBoss) chefes++; });
-      return { chefes, dica: g.hintText.text, tempo: g.elapsed };
-    });
-    assert.ok(estado.tempo > 600);
-    assert.equal(estado.chefes, 0, 'chefe não pode aparecer com o auto ligado');
-    assert.match(estado.dica, /AUTO/);
-
-    await G(pagina, () => game.scene.getScene('Game').toggleAuto());
-    await esperar(600);
-    estado = await G(pagina, () => { let c = 0; game.scene.getScene('Game').enemies.children.iterate((e) => { if (e && e.active && e.isBoss) c++; }); return c; });
-    assert.equal(estado, 1, 'ao desligar o auto, o chefe deveria aparecer');
+    const chefes = await G(pagina, () => { let c = 0; game.scene.getScene('Game').enemies.children.iterate((e) => { if (e && e.active && e.isBoss) c++; }); return c; });
+    assert.equal(chefes, 1, 'o chefe dos 10:00 deveria aparecer');
     assert.deepEqual(erros, []);
   } finally { await fechar(); }
 });
@@ -110,13 +98,16 @@ test('CT-10/11: chefe derrotado solta um baú e não libera nave nem galáxia', 
   } finally { await fechar(); }
 });
 
-test('CT-70: com o automático ligado aos 30:00 a nave-mãe espera e a vitória não conta', async () => {
+test('CT-70: não existe mais botão AUTO nem a tecla Espaço liga piloto (pedido do dono em 25/11)', async () => {
   const { pagina, erros, fechar } = await partida(0);
   try {
-    await G(pagina, () => { const g = game.scene.getScene('Game'); g.toggleAuto(); g.testeIrPara(1798); });
-    await esperarRelogio(pagina, 1801);
-    const r = await G(pagina, () => { const g = game.scene.getScene('Game'); return { mae: !!(g.naveMae && g.naveMae.active), vitoria: !!g.vitoriaRegistrada, galaxia: SAVE.cleared[0] }; });
-    assert.deepEqual(r, { mae: false, vitoria: false, galaxia: false });
+    await pagina.keyboard.press('Space');
+    const r = await G(pagina, () => {
+      const g = game.scene.getScene('Game');
+      const textos = g.children.list.filter((o) => o.type === 'Text').map((o) => o.text);
+      return { temBotao: textos.some((t) => t.startsWith('AUTO')), temFuncao: typeof g.toggleAuto, temAuto: 'auto' in g };
+    });
+    assert.deepEqual(r, { temBotao: false, temFuncao: 'undefined', temAuto: false });
     assert.deepEqual(erros, []);
   } finally { await fechar(); }
 });

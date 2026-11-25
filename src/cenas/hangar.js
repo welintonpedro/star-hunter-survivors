@@ -75,7 +75,7 @@ class HangarScene extends Phaser.Scene {
         SAVE.credits -= cost; SAVE.meta[u.id] = lvl + 1; writeSave(SAVE); this.build();
       }, { disabled: !can, size: 12 }));
     });
-    this.keep(this.add.text(W / 2, 520, 'Mover: WASD/setas ou arrastar  •  Automático: ESPAÇO  •  Escolhas: 1/2/3', {
+    this.keep(this.add.text(W / 2, 520, 'Mover: WASD/setas ou arrastar  •  Escolhas: 1/2/3', {
       fontFamily: 'Arial', fontSize: '11px', color: '#64748b'
     }).setOrigin(0.5));
   }

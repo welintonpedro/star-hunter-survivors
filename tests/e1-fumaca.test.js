@@ -27,12 +27,12 @@ test('CA-05: as 3 naves e as 3 galáxias continuam existindo, com Falcão libera
   try {
     await esperarCena(pagina, 'Hangar');
     const dados = await pagina.evaluate(() => ({
-      naves: SHIPS.map((s) => s.id), galaxias: GALAXIES.length, falcao: !!SAVE.owned.falcao, auto: AUTO_REWARD_MULT
+      naves: SHIPS.map((s) => s.id), galaxias: GALAXIES.length, falcao: !!SAVE.owned.falcao, semAuto: typeof AUTO_REWARD_MULT === 'undefined'
     }));
     assert.deepEqual(dados.naves, ['falcao', 'tita', 'agulha']);
     assert.equal(dados.galaxias, 3);
     assert.equal(dados.falcao, true);
-    assert.equal(dados.auto, 0.6);
+    assert.equal(dados.semAuto, true, 'modo AUTO removido a pedido do dono (25/11)');
     assert.deepEqual(erros, []);
   } finally { await fechar(); }
 });
