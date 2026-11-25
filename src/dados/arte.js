@@ -12,6 +12,9 @@ const ART = {
   coin: ['...aa...', '..abba..', '.abbbba.', 'abbccbba', 'abbccbba', 'abbbbbba', '.abbbba.', '..aaaa..'],
   magnet: ['cc....cc', 'ab....ba', 'ab....ba', 'ab....ba', 'abb..bba', '.abbbba.', '..aaaa..', '........'],
   bomb: ['.....c..', '....c...', '..aaaa..', '.abbbba.', 'abbcbbba', 'abbbbbba', '.abbbba.', '..aaaa..'],
+  congelar: ['..a..a..', 'a.abba.a', '.abbbba.', 'abbccbba', 'abbccbba', '.abbbba.', 'a.abba.a', '..a..a..'],
+  lento: ['aaaaaaaa', '.abbbba.', '..abba..', '...cc...', '...cc...', '..abba..', '.abbbba.', 'aaaaaaaa'],
+  chamas: ['...a....', '..aba...', '..abba..', '.abbcba.', '.abccba.', 'abcccba.', 'abcccbba', '.aaaaaa.'],
   wbox: ['..aaaa..', '.abccba.', 'abccccba', 'acccccca', 'acccccca', 'abccccba', '.abccba.', '..aaaa..']
 };
 

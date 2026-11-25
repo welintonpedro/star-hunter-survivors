@@ -44,6 +44,9 @@ class BootScene extends Phaser.Scene {
     pixelTexture(this, 'coin', ART.coin, { a: '#713f12', b: '#facc15', c: '#fef9c3' }, 3);
     pixelTexture(this, 'magnetItem', ART.magnet, { a: '#1e3a8a', b: '#3b82f6', c: '#e5e7eb' }, 3);
     pixelTexture(this, 'bomb', ART.bomb, { a: '#111827', b: '#374151', c: '#f97316' }, 3);
+    pixelTexture(this, 'congelar', ART.congelar, { a: '#bae6fd', b: '#38bdf8', c: '#ffffff' }, 3);
+    pixelTexture(this, 'lento', ART.lento, { a: '#4c1d95', b: '#a78bfa', c: '#fde047' }, 3);
+    pixelTexture(this, 'chamas', ART.chamas, { a: '#7c2d12', b: '#f97316', c: '#fde047' }, 3);
     pixelTexture(this, 'wbox', ART.wbox, { a: '#581c87', b: '#c084fc', c: '#f5d0fe' }, 4);
     gfxTexture(this, 'bullet', 10, 10, (g) => { g.fillStyle(0xfde047); g.fillCircle(5, 5, 4); g.fillStyle(0xffffff); g.fillCircle(5, 5, 2); });
     gfxTexture(this, 'ebullet', 12, 12, (g) => { g.fillStyle(0xf43f5e); g.fillCircle(6, 6, 5); g.fillStyle(0xffe4e6); g.fillCircle(6, 6, 2); });
@@ -114,6 +117,8 @@ class BootScene extends Phaser.Scene {
     estrelasBrilhantes(this, 'stars_near', 256, 7);   // estrelas em cruz na mesma camada (uma camada a menos)
 
     writeSave(SAVE);
+    // pixel art nítida: todas as texturas geradas usam filtro "nearest" (textos usam o suave)
+    this.textures.getTextureKeys().forEach((k) => this.textures.get(k).setFilter(Phaser.Textures.FilterMode.NEAREST));
     this.scene.start('Hangar');
   }
 }

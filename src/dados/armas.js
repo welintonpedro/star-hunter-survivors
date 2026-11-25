@@ -66,6 +66,21 @@ const WEAPONS = {
     desc: ['Disco que vai e volta cortando tudo', '+1 disco', '+40% dano', '+30% tamanho', '+1 disco e -20% recarga'],
     stats: (l) => ({ cd: 1.8 * (l >= 5 ? 0.8 : 1), dmg: 14 * (l >= 3 ? 1.4 : 1), amount: 1 + (l >= 2 ? 1 : 0) + (l >= 5 ? 1 : 0), size: l >= 4 ? 1.3 : 1, range: 320 }),
     evolve: (s) => { s.amount += 2; s.size *= 1.5; s.dmg *= 1.6; s.range *= 1.3; s.pull = true; }
+  },
+  // ----- armas novas (pedido do dono em 25/11/2026, RN-63) -----
+  supermissil: {
+    name: 'Super Míssil', abbr: 'SM', color: 0xdc2626, hidden: false,
+    evo: 'core', evoName: 'Ogiva Solar',
+    desc: ['Míssil lento com explosão enorme', '+30% área da explosão', '+40% dano', '-20% recarga', '+1 míssil e +30% dano'],
+    stats: (l) => ({ cd: 3.4 * (l >= 4 ? 0.8 : 1), dmg: 48 * (l >= 3 ? 1.4 : 1) * (l >= 5 ? 1.3 : 1), amount: 1 + (l >= 5 ? 1 : 0), radius: 120 * (l >= 2 ? 1.3 : 1), grande: true }),
+    evolve: (s) => { s.dmg *= 1.6; s.radius *= 1.4; s.amount += 1; s.cd *= 0.8; }
+  },
+  nova: {
+    name: 'Nova Radial', abbr: 'NR', color: 0x22d3ee, hidden: false,
+    evo: 'cooler', evoName: 'Supernova',
+    desc: ['Atira para todos os lados ao mesmo tempo', '+4 projéteis', '+40% dano', '+1 perfuração', '+4 projéteis e -20% recarga'],
+    stats: (l) => ({ cd: 1.4 * (l >= 5 ? 0.8 : 1), dmg: 8 * (l >= 3 ? 1.4 : 1), amount: 8 + (l >= 2 ? 4 : 0) + (l >= 5 ? 4 : 0), pierce: l >= 4 ? 1 : 0 }),
+    evolve: (s) => { s.amount += 8; s.dmg *= 1.5; s.pierce += 1; s.duplo = true; }
   }
 };
 

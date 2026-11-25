@@ -31,6 +31,8 @@ class GameScene extends Phaser.Scene {
     this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
     this.cullTimer = 0;
     this.weapons = []; this.passives = {}; this.sobrecargas = {};
+    this.armasDaPartida = this.sortearArmasDaPartida();
+    this.congeladoAte = 0; this.lentoAte = 0; this.chamasAte = 0; this.chamasT = 0; this.tintPoder = false;
     this.orbs = []; this.orbAngle = 0; this.missiles = []; this.discs = [];
     this.minimapTimer = 0;
 
@@ -266,7 +268,14 @@ class GameScene extends Phaser.Scene {
   // Arma comum que pode aparecer nas cartas: não é poder de nave e não está travada
   armaDisponivel(id) {
     const d = WEAPONS[id];
+    if (this.armasDaPartida && !this.armasDaPartida.includes(id)) return false;   // fora do sorteio desta partida
     return !d.poder && (!d.hidden || armaLiberada(SAVE, id));
+  }
+  // Sorteia quais armas comuns podem sair nas cartas desta partida (RN-64)
+  sortearArmasDaPartida() {
+    const candidatas = Object.keys(WEAPONS).filter((id) => !WEAPONS[id].poder && (!WEAPONS[id].hidden || armaLiberada(SAVE, id)));
+    Phaser.Utils.Array.Shuffle(candidatas);
+    return candidatas.slice(0, ARMAS_POR_PARTIDA);
   }
   pickWeighted(list, n) {
     const pool = list.slice(), out = [];
@@ -824,6 +833,11 @@ class GameScene extends Phaser.Scene {
     const list = this.listaInimigos || (this.listaInimigos = []);
     list.length = 0;
     const ppx = this.player.x, ppy = this.player.y, LONGE2 = INIMIGO_LONGE * INIMIGO_LONGE;
+    const congelado = this.elapsed < this.congeladoAte, lento = !congelado && this.elapsed < this.lentoAte;
+    // quando o poder acaba, tira a cor azul/roxa de todos uma única vez
+    const tingir = congelado || lento;
+    if (this.tintPoder && !tingir) this.enemies.children.iterate((e) => { if (e && e.active) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); } });
+    this.tintPoder = tingir;
     this.enemies.children.iterate((e) => {
       if (!e || !e.active) return;
       this.aproximarObj(e);
@@ -849,6 +863,8 @@ class GameScene extends Phaser.Scene {
       }
       if (e.kbT > 0) { e.kbT -= dt; e.setVelocity(e.kbx, e.kby); continue; }
       if (e.atordoado > 0) { e.atordoado -= dt; e.setVelocity(0, 0); continue; }   // Martelo Gravitacional
+      if (congelado) { e.setVelocity(0, 0); e.setTint(0x93c5fd); continue; }        // poder "tempo parado"
+      if (lento) e.setTint(0xc4b5fd);
       const dx = px - e.x, dy = py - e.y, d = Math.hypot(dx, dy) || 1;
       if (!e.isBoss && !e.isElite && d > 1400) {
         const p = this.spawnPoint(); e.setPosition(p.x, p.y); continue;   // reposiciona em vez de sumir
@@ -885,6 +901,7 @@ class GameScene extends Phaser.Scene {
         }
         vx += sx * e.speedV * 1.6; vy += sy * e.speedV * 1.6;
       }
+      if (lento) { vx *= PODER_LENTO_MULT; vy *= PODER_LENTO_MULT; }
       e.setVelocity(vx, vy);
       if (e.isBoss) this.updateBoss(e, dt);
     }
@@ -1041,7 +1058,23 @@ class GameScene extends Phaser.Scene {
     this.boom(r.x, r.y, 10, r.crystal ? 0x22d3ee : 0xa8a29e);
     r.disableBody(true, true);
     // meteoros só dão créditos; cristal dá mais (RN-55, valores em src/config.js)
-    this.dropPickup(r.x, r.y, 'coin', r.crystal ? CREDITOS_CRISTAL : CREDITOS_METEORO);
+    const item = this.sortearItemMeteoro(false);
+    if (r.crystal) {
+      this.dropPickup(r.x - 12, r.y, 'coin', CREDITOS_CRISTAL);
+      this.dropPickup(r.x + 12, r.y, this.sortearItemMeteoro(true));
+    } else this.dropPickup(r.x, r.y, item, item === 'coin' ? CREDITOS_METEORO : undefined);
+  }
+  // Sorteio pelo peso da tabela METEORO_ITENS (src/config.js); semMoeda = cristal (moeda já vem garantida)
+  sortearItemMeteoro(semMoeda) {
+    let total = 0;
+    for (const k in METEORO_ITENS) if (!(semMoeda && k === 'coin')) total += METEORO_ITENS[k];
+    let r = Math.random() * total;
+    for (const k in METEORO_ITENS) {
+      if (semMoeda && k === 'coin') continue;
+      r -= METEORO_ITENS[k];
+      if (r < 0) return k;
+    }
+    return 'heal';
   }
 
   // Faíscas de explosão: vêm de um estoque reaproveitado (pooling), sem criar e destruir
@@ -1084,10 +1117,13 @@ class GameScene extends Phaser.Scene {
       else if (w.id === 'shock') fired = this.fireShock(s);
       else if (w.id === 'chain') fired = this.fireChain(s);
       else if (w.id === 'disc') fired = this.fireDiscs(s);
+      else if (w.id === 'supermissil') fired = this.fireSuperMissil(s);
+      else if (w.id === 'nova') fired = this.fireNova(s);
       if (fired) tocarSom(this, 'tiro');
       w.timer = fired ? s.cd : 0.1;
     });
     this.updateOrbitals(dt, orbitalStats);
+    if (this.elapsed < this.chamasAte) this.updateChamas(dt);
     this.updateMissiles(dt);
     this.updateDiscs(dt);
   }
@@ -1178,6 +1214,56 @@ class GameScene extends Phaser.Scene {
     }
     return true;
   }
+  // Lança-chamas temporário (poder de meteoro, RN-62): cone de fogo na direção do inimigo mais perto
+  updateChamas(dt) {
+    this.chamasT -= dt;
+    if (this.chamasT > 0) return;
+    const PASSO = 0.1;
+    this.chamasT = PASSO;
+    const alvo = this.nearestTarget(PODER_CHAMAS_ALCANCE);
+    const px = this.player.x, py = this.player.y;
+    const a = alvo ? Math.atan2(alvo.y - py, alvo.x - px) : this.player.rotation - Math.PI / 2;
+    const dano = PODER_CHAMAS_DANO * PASSO * linhaDoMinuto(ONDAS, this.elapsed).vida * this.gal.hpMult * this.mods.dmg;
+    const R = PODER_CHAMAS_ALCANCE, R2 = R * R, ABERTURA = 0.5;
+    this.forEachTarget((t) => {
+      const dx = t.x - px, dy = t.y - py, d2 = dx * dx + dy * dy;
+      if (d2 > R2) return;
+      if (Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - a)) < ABERTURA) this.damageTarget(t, dano);
+    });
+    // fogo: faíscas do estoque saindo em cone
+    for (let i = 0; i < (this.efeitosReduzidos ? 2 : 5); i++) {
+      const f = this.faiscas.get(px, py);
+      if (!f) break;
+      const aa = a + (Math.random() - 0.5) * ABERTURA * 2, vel = R * (2.2 + Math.random());
+      f.setActive(true).setVisible(true).setPosition(px, py).setTint(Math.random() < 0.5 ? 0xf97316 : 0xfde047).setAlpha(1).setScale(1.6).setDepth(9);
+      f.vx = Math.cos(aa) * vel; f.vy = Math.sin(aa) * vel; f.vida = 0.35; f.vidaMax = 0.35;
+    }
+  }
+  // Super Míssil: lento, grande e com explosão enorme (RN-63)
+  fireSuperMissil(s) {
+    if (!this.nearestTarget(750)) return false;
+    for (let i = 0; i < s.amount; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const m = this.add.image(this.player.x, this.player.y, 'missile').setDepth(8).setScale(2.4).setTint(0xfca5a5);
+      m.ang = a; m.speed = 150; m.velMax = 330; m.life = 4; m.dmg = s.dmg; m.radius = s.radius; m.target = null; m.grande = true;
+      this.missiles.push(m);
+    }
+    return true;
+  }
+  // Nova Radial: um anel de tiros para todos os lados; evoluída, dispara dois anéis (RN-63)
+  fireNova(s) {
+    if (!this.nearestTarget(520)) return false;
+    const px = this.player.x, py = this.player.y, n = s.amount, giro = (this.novaGiro = (this.novaGiro || 0) + 0.35);
+    const anel = (atraso) => {
+      for (let i = 0; i < n; i++) {
+        const b = this.shoot(px, py, giro + atraso + i / n * Math.PI * 2, s.dmg, s.pierce);
+        if (b) { b.setTint(0x67e8f9); b.life = 0.8; }
+      }
+    };
+    anel(0);
+    if (s.duplo) this.time.delayedCall(180, () => { if (!this.ended) anel(Math.PI / n); });
+    return true;
+  }
   updateMissiles(dt) {
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
@@ -1191,12 +1277,13 @@ class GameScene extends Phaser.Scene {
         const giro = 6 + 18 * perto;
         m.ang += clamp(diff, -giro * dt, giro * dt);
       }
-      m.speed = Math.min(480, m.speed + 500 * dt);
+      m.speed = Math.min(m.velMax || 480, m.speed + (m.grande ? 220 : 500) * dt);
       m.x += Math.cos(m.ang) * m.speed * dt; m.y += Math.sin(m.ang) * m.speed * dt;
       m.rotation = m.ang + Math.PI / 2;
       const hit = m.target && Math.hypot(m.target.x - m.x, m.target.y - m.y) < (m.target.hitR || 14) + 6;
       if (hit || m.life <= 0) {
         this.explode(m.x, m.y, m.radius, m.dmg);
+        if (m.grande) { this.cameras.main.shake(120, 0.006); this.boom(m.x, m.y, 18, 0xf97316); }
         m.destroy();
         this.missiles.splice(i, 1);
       }
@@ -1394,7 +1481,7 @@ class GameScene extends Phaser.Scene {
   }
 
   dropPickup(x, y, ptype, extra) {
-    const keys = { heal: 'heal', coin: 'coin', magnet: 'magnetItem', bomb: 'bomb', chest: 'chest', weapon: 'wbox' };
+    const keys = { heal: 'heal', coin: 'coin', magnet: 'magnetItem', bomb: 'bomb', chest: 'chest', weapon: 'wbox', congelar: 'congelar', lento: 'lento', chamas: 'chamas' };
     const p = this.add.image(x, y, keys[ptype]).setDepth(6);
     p.ptype = ptype; p.extra = extra;
     this.pickups.add(p);
@@ -1421,6 +1508,9 @@ class GameScene extends Phaser.Scene {
       else if (t === 'coin') { tocarSom(this, 'moeda'); const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, tx('+{v} créditos', { v: fmt(v) }), '#facc15'); }
       else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, tx('ÍMÃ TOTAL!'), '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
+      else if (t === 'congelar') { this.congeladoAte = this.elapsed + PODER_CONGELAR_S; this.cameras.main.flash(200, 147, 197, 253); this.banner(tx('TEMPO PARADO!'), '#93c5fd'); tocarSom(this, 'conquista'); }
+      else if (t === 'lento') { this.lentoAte = this.elapsed + PODER_LENTO_S; this.banner(tx('INIMIGOS LENTOS!'), '#c4b5fd'); tocarSom(this, 'conquista'); }
+      else if (t === 'chamas') { this.chamasAte = this.elapsed + PODER_CHAMAS_S; this.banner(tx('LANÇA-CHAMAS!'), '#fb923c'); tocarSom(this, 'conquista'); }
       else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
       else if (t === 'weapon') this.contarArmaAchada(extra);
     });

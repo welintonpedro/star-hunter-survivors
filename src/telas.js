@@ -18,7 +18,7 @@ function _telaBase(scene, titulo, aoFechar) {
 function abrirCodex(scene, aoFechar) {
   const t = _telaBase(scene, 'CÓDEX', aoFechar);
   const { fixo } = t;
-  const txt = (x, y, s, tam, cor, d) => fixo(scene.add.text(x, y, s, { fontFamily: 'Arial', fontSize: tam + 'px', color: cor || '#cbd5e1', align: 'center', wordWrap: { width: 92 } }).setOrigin(0.5, 0), d || 2);
+  const txt = (x, y, s, tam, cor, d, larg) => fixo(scene.add.text(x, y, s, { fontFamily: 'Arial', fontSize: tam + 'px', color: cor || '#cbd5e1', align: 'center', wordWrap: { width: larg || 92 } }).setOrigin(0.5, 0), d || 2);
   const titulo = (y, s) => fixo(scene.add.text(W / 2, y, s, { fontFamily: 'Arial', fontSize: '12px', color: '#fde68a', fontStyle: 'bold' }).setOrigin(0.5, 0), 2);
   const icone = (x, y, chave, tam, apagado) => {
     fixo(scene.add.rectangle(x, y, tam + 6, tam + 6, 0x000000, 0.5).setStrokeStyle(1, 0x334155), 1);
@@ -31,13 +31,14 @@ function abrirCodex(scene, aoFechar) {
   titulo(54, tx('ARMAS E PODERES'));
   const armas = Object.keys(WEAPONS);
   armas.forEach((id, i) => {
-    const d = WEAPONS[id], x = W / 2 + (i - (armas.length - 1) / 2) * 96, y = 98;
+    const passo = Math.min(96, (W - 30) / armas.length);   // 11 armas cabem na largura
+    const d = WEAPONS[id], x = W / 2 + (i - (armas.length - 1) / 2) * passo, y = 98;
     const travada = d.hidden && !armaLiberada(SAVE, id);
     icone(x, y, iconeDe(id), 36, travada);
     let sub = d.name;
     if (d.poder) sub += '\n(' + SHIPS.find((s) => s.id === d.poder).name + ')';
     if (travada) sub += '\n' + tx('achada {n}/{total}', { n: Math.min(ACHADOS_PARA_LIBERAR, SAVE.stats.armasAchadas[id] || 0), total: ACHADOS_PARA_LIBERAR });
-    txt(x, y + 24, sub, 10, travada ? '#64748b' : '#cbd5e1');
+    txt(x, y + 24, sub, 10, travada ? '#64748b' : '#cbd5e1', 2, Math.min(96, (W - 30) / armas.length) - 4);
   });
 
   // itens
@@ -53,13 +54,13 @@ function abrirCodex(scene, aoFechar) {
   const descobertos = armas.filter((id) => SAVE.combos.includes(id)).length;
   titulo(262, tx('COMBOS  ({n}/{total} descobertos)', { n: descobertos, total: armas.length }));
   armas.forEach((id, i) => {
-    const col = i % 3, lin = Math.floor(i / 3);
-    const cx = W / 2 + (col - 1) * 290, cy = 312 + lin * 64;
+    const col = i % 4, lin = Math.floor(i / 4);   // 4 colunas: os 11 combos cabem em 3 linhas
+    const cx = W / 2 + (col - 1.5) * 228, cy = 312 + lin * 64;
     const sabe = SAVE.combos.includes(id), d = WEAPONS[id];
-    fixo(scene.add.rectangle(cx, cy + 6, 270, 58, sabe ? 0x422006 : 0x111827, 0.85).setStrokeStyle(1, sabe ? 0xfacc15 : 0x334155), 1);
+    fixo(scene.add.rectangle(cx, cy + 6, 216, 58, sabe ? 0x422006 : 0x111827, 0.85).setStrokeStyle(1, sabe ? 0xfacc15 : 0x334155), 1);
     const chaves = sabe ? [iconeDe(id), iconeDe(d.evo), iconeDe(id, true)] : ['icone_oculto', 'icone_oculto', 'icone_oculto'];
-    chaves.forEach((k, j) => icone(cx - 80 + j * 80, cy - 2, k, 30));
-    ['+', '='].forEach((s, j) => fixo(scene.add.text(cx - 40 + j * 80, cy - 2, s, { fontFamily: 'Arial Black, Arial', fontSize: '18px', color: '#fde047' }).setOrigin(0.5), 2));
+    chaves.forEach((k, j) => icone(cx - 64 + j * 64, cy - 2, k, 28));
+    ['+', '='].forEach((s, j) => fixo(scene.add.text(cx - 32 + j * 64, cy - 2, s, { fontFamily: 'Arial Black, Arial', fontSize: '18px', color: '#fde047' }).setOrigin(0.5), 2));
     fixo(scene.add.text(cx, cy + 24, sabe ? d.evoName : '???', { fontFamily: 'Arial', fontSize: '11px', color: sabe ? '#f5d0fe' : '#64748b' }).setOrigin(0.5), 2);
   });
   return t.fechar;

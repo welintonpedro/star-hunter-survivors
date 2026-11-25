@@ -5,7 +5,7 @@
 // Naves e galáxias continuam sendo liberadas pela vitória (sobreviver aos 30:00).
 // "s" é o save; s.stats guarda os números acumulados entre partidas.
 
-const TOTAL_COMBOS = 9;          // 6 armas comuns + 3 poderes, cada um com sua evolução
+const TOTAL_COMBOS = 11;         // 8 armas comuns + 3 poderes, cada um com sua evolução
 const ACHADOS_PARA_LIBERAR = 3;  // achar uma arma travada 3 vezes libera ela nas cartas
 const LOCAIS_POR_GALAXIA = 30;
 

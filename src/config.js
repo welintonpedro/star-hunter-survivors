@@ -18,6 +18,16 @@ const CHANCE_ARMA_TRAVADA = 0.35; // chance de um baú de subchefe trazer uma ar
 const METEORO_PERTO = 150;       // meteoro a essa distância da nave é atacado como inimigo (RN-46)
 const CREDITOS_METEORO = 12;     // créditos de cada meteoro quebrado (RN-55)
 const CREDITOS_CRISTAL = 60;     // créditos de cada meteoro de cristal (RN-55)
+// O que sai de um meteoro quebrado: sorteio pelo peso (RN-62). Cristal dá créditos e mais um sorteio sem moeda.
+const METEORO_ITENS = { coin: 70, heal: 8, magnet: 5, congelar: 3, lento: 5, chamas: 4 };
+const PODER_CONGELAR_S = 5;      // segundos com todos os inimigos parados
+const PODER_LENTO_S = 8;         // segundos com inimigos lentos
+const PODER_LENTO_MULT = 0.45;   // velocidade dos inimigos durante a lentidão
+const PODER_CHAMAS_S = 10;       // segundos de lança-chamas
+const PODER_CHAMAS_DANO = 45;    // dano por segundo (multiplicado pela vida dos inimigos do minuto)
+const PODER_CHAMAS_ALCANCE = 240;
+// Armas comuns sorteadas para cada partida: nem todas aparecem (RN-64)
+const ARMAS_POR_PARTIDA = 5;
 const INIMIGO_LONGE = 1300;       // inimigo comum mais longe que isso da nave reaparece na borda da tela (RN-59)
 const MAX_ENEMIES = 250;          // limite de inimigos na tela (RN-12)
 const MAX_WEAPONS = 4, MAX_PASSIVES = 4, MAX_WEAPON_LEVEL = 5;
