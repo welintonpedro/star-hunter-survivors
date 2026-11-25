@@ -1,4 +1,4 @@
-// Baú com 3 escolhas ocultas e troca/descarte de arma sem espaço (pedido do dono em 25/11/2026)
+// Baú com 3 escolhas ocultas (pedido do dono em 25/11/2026). Desde a RN-55 a arma achada vira só pista (ok do dono em 25/11).
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { abrirJogo, esperarCena } = require('./ajuda/navegador');
@@ -55,24 +55,19 @@ test('com combo pronto, qualquer baú escolhido evolui a arma', async () => {
   } finally { await j.fechar(); }
 });
 
-test('arma achada sem espaço: dá para trocar por uma arma comum (não o poder) ou descartar', async () => {
+test('RN-55: arma travada achada só conta pista (1/3); a arma não entra no inventário', async () => {
   const j = await partida();
   try {
     const r = await G(j.pagina, () => {
       const g = game.scene.getScene('Game');
-      ['pulsar', 'missiles', 'shock'].forEach((w) => g.addWeapon(w));   // 4 espaços cheios
-      g.gainHiddenWeapon('disc');
-      const opcoes = g.modal.opcoes.slice();
-      g.modalPick(1);                     // troca a 2ª arma comum (Mísseis)
-      const depoisTroca = g.weapons.map((w) => w.id);
-      g.gainHiddenWeapon('chain');
-      g.modalPick(g.modal.opcoes.length - 1);   // descarta
-      return { opcoes, depoisTroca, depoisDescarte: g.weapons.map((w) => w.id), modal: !!g.modal };
+      SAVE.stats.armasAchadas = {};
+      const antes = g.weapons.map((w) => w.id).join(',');
+      g.contarArmaAchada('disc');
+      return { antes, depois: g.weapons.map((w) => w.id).join(','), pistas: SAVE.stats.armasAchadas.disc, modal: !!g.modal };
     });
-    assert.deepEqual(r.opcoes, [1, 2, 3, 'descartar'], 'o poder (espaço 0) não entra na troca');
-    assert.deepEqual(r.depoisTroca, ['rajada', 'pulsar', 'disc', 'shock']);
-    assert.deepEqual(r.depoisDescarte, ['rajada', 'pulsar', 'disc', 'shock']);
-    assert.equal(r.modal, false);
+    assert.equal(r.depois, r.antes, 'achar não pode dar a arma');
+    assert.equal(r.pistas, 1);
+    assert.equal(r.modal, false, 'sem tela de troca');
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });

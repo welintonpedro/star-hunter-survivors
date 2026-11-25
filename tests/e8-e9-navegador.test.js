@@ -130,7 +130,7 @@ test('CT-52/53: arma travada não aparece nas cartas; achada 3 vezes, passa a ap
         g.bausSubchefe = 1; g.openChest();
         const i = g.modal.conteudos.findIndex((c) => c.arma);   // escolhe o baú que tem a arma
         g.modalPick(i); g.revelarBaus(i); g.modalPick(0);
-        while (g.modal) g.modalPick(g.modal.opcoes ? g.modal.opcoes.length - 1 : 0);   // fecha trocas, se houver
+        while (g.modal) g.modalPick(0);   // fecha trocas, se houver
         g.weapons = g.weapons.filter((w) => w.id !== 'disc' && w.id !== 'chain');
       }
       return { antes, achadas: SAVE.stats.armasAchadas, depois: vistas().has('disc') || vistas().has('chain') };
@@ -143,19 +143,19 @@ test('CT-52/53: arma travada não aparece nas cartas; achada 3 vezes, passa a ap
   } finally { await j.fechar(); }
 });
 
-test('cristal quebrado solta baú, não arma', async () => {
+test('RN-55: meteoro e cristal quebrados soltam só créditos (cristal vale mais; ok do dono em 25/11)', async () => {
   const j = await abrir();
   try {
     await partida(j, 0);
     const r = await G(j.pagina, () => {
       const g = game.scene.getScene('Game');
-      const c = g.criarMeteoro(g.player.x + 300, g.player.y, true);
-      g.breakRock(c);
-      const tipos = []; g.pickups.children.iterate((p) => { if (p && p.active) tipos.push(p.ptype); });
-      return tipos;
+      g.pickups.clear(true, true);
+      g.breakRock(g.criarMeteoro(g.player.x + 300, g.player.y, true));
+      g.breakRock(g.criarMeteoro(g.player.x - 300, g.player.y, false));
+      const itens = []; g.pickups.children.iterate((p) => { if (p && p.active) itens.push(p.ptype + ':' + p.extra); });
+      return itens.sort();
     });
-    assert.ok(r.includes('chest'));
-    assert.ok(!r.includes('weapon'));
+    assert.deepEqual(r, ['coin:12', 'coin:60']);
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
