@@ -5,7 +5,7 @@
 const _EVENTOS = typeof EVENTOS !== 'undefined' ? EVENTOS : require('./dados/eventos.js').EVENTOS;
 
 const CALMA_INICIAL = 2;     // segundos de calma no começo da partida
-const RITMO_REPOR = 8;       // abaixo do mínimo, nascem até 8 por segundo (sem aparecer tudo de uma vez)
+const RITMO_REPOR = 15;      // abaixo do mínimo, nascem até 15 por segundo (sem aparecer tudo de uma vez)
 
 // Linha da tabela para o tempo t, suavizada entre o minuto atual e o seguinte
 function linhaDoMinuto(tabela, t) {
@@ -13,7 +13,7 @@ function linhaDoMinuto(tabela, t) {
   const a = tabela[m], b = tabela[Math.min(tabela.length - 1, m + 1)];
   const f = Math.max(0, Math.min(1, t / 60 - m));
   const mix = (k) => a[k] + (b[k] - a[k]) * f;
-  return { min: Math.round(mix('min')), max: Math.round(mix('max')), porSegundo: mix('porSegundo'), vida: mix('vida') };
+  return { min: Math.round(mix('min')), max: Math.round(mix('max')), porSegundo: mix('porSegundo'), vida: mix('vida'), dano: a.dano === undefined ? 1 : mix('dano') };
 }
 
 function novoEstadoOndas(t) {

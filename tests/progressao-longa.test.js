@@ -32,6 +32,13 @@ test('o começo tem mais inimigos que antes e o fim tem muitos', () => {
   assert.ok(ONDAS[29].max >= 200);
 });
 
+test('inimigos ficam bem mais fortes com o tempo (vida e dano), para o fim não ficar fácil', () => {
+  assert.ok(ONDAS[3].min >= 45, 'aos 3 min já tem bastante inimigo');
+  assert.ok(ONDAS[10].vida >= 4 && ONDAS[20].vida >= 15 && ONDAS[29].vida >= 40);
+  for (let m = 1; m < 30; m++) assert.ok(ONDAS[m].dano >= ONDAS[m - 1].dano);
+  assert.ok(ONDAS[29].dano >= 2.5);
+});
+
 test('com tudo no máximo, as cartas viram Sobrecarga e a escolhida melhora a nave', async () => {
   const j = await abrirJogo({ busca: 'teste=1' });
   try {

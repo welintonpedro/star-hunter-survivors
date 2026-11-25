@@ -685,10 +685,10 @@ class GameScene extends Phaser.Scene {
     e.enableBody(true, x, y, true, true);
     e.setDepth(5).clearTint();
     e.body.setCircle(t.radius, e.width / 2 - t.radius, e.height / 2 - t.radius);
-    const vidaMinuto = linhaDoMinuto(ONDAS, this.elapsed).vida;
+    const linhaMin = linhaDoMinuto(ONDAS, this.elapsed), vidaMinuto = linhaMin.vida;
     e.hp = e.maxHp = t.hp * this.gal.hpMult * vidaMinuto;
     e.speedV = t.speed * this.gal.speedMult * (0.9 + Math.random() * 0.2);
-    e.damage = t.damage * Math.sqrt(this.gal.hpMult);
+    e.damage = t.damage * Math.sqrt(this.gal.hpMult) * linhaMin.dano;   // fica mais forte com o tempo
     e.reward = t.reward; e.xpVal = t.xp; e.hitR = t.radius;
     e.isBoss = false; e.isElite = false; e.straight = null;
     e.flash = 0; e.orbHit = 0; e.kbT = 0; e.kbx = 0; e.kby = 0;
