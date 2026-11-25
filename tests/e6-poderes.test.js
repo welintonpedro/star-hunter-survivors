@@ -67,7 +67,7 @@ test('CT-36/37: poder no nível 5 evolui no baú só com o item certo', async ()
       const semItem = g.evolvable().map((w) => w.id);
       g.addPassive('armor');
       const comItem = g.evolvable().map((w) => w.id);
-      g.openChest(); g.modalPick(0);
+      g.openChest(); g.modalPick(0); g.revelarBaus(0); g.modalPick(0);
       return { semItem, comItem, evoluiu: g.weapons[0].evolved };
     });
     assert.deepEqual(r.semItem, []);

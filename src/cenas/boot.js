@@ -30,6 +30,16 @@ class BootScene extends Phaser.Scene {
     pixelTexture(this, 'rock', ART.rock, { a: '#3f3f46', b: '#78716c', c: '#57534e' }, 4);
     pixelTexture(this, 'crystal', ART.rock, { a: '#164e63', b: '#22d3ee', c: '#a5f3fc' }, 4);
     pixelTexture(this, 'chest', ART.chest, { a: '#78350f', b: '#f59e0b', c: '#fef08a' }, 3);
+    // baú aberto (tampa levantada e brilho dentro) e raios de luz da abertura
+    pixelTexture(this, 'chest_aberto', ['.aaaaaaaa.', 'abbbbbbbba', '.aaaaaaaa.', '..........', 'aeeeeeeeea', 'abeeeeeeba', 'aaaaccaaaa', 'abbbccbbba', 'abbbbbbbba', 'aaaaaaaaaa'],
+      { a: '#78350f', b: '#f59e0b', c: '#fef08a', e: '#fff7c2' }, 3);
+    gfxTexture(this, 'raios', 220, 220, (g) => {
+      for (let i = 0; i < 12; i++) {
+        const a = i / 12 * Math.PI * 2, b = a + 0.12;
+        g.fillStyle(0xfde68a, i % 2 ? 0.18 : 0.32);
+        g.fillTriangle(110, 110, 110 + Math.cos(a) * 110, 110 + Math.sin(a) * 110, 110 + Math.cos(b) * 110, 110 + Math.sin(b) * 110);
+      }
+    });
     pixelTexture(this, 'heal', ART.heal, { a: '#7f1d1d', b: '#ef4444' }, 3);
     pixelTexture(this, 'coin', ART.coin, { a: '#713f12', b: '#facc15', c: '#fef9c3' }, 3);
     pixelTexture(this, 'magnetItem', ART.magnet, { a: '#1e3a8a', b: '#3b82f6', c: '#e5e7eb' }, 3);

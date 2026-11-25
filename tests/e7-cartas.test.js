@@ -64,7 +64,7 @@ test('CT-29/RN-29: depois de um combo, o painel mostra [arma] + [item] = [evolu√
       const g = game.scene.getScene('Game');
       while (g.weapons[0].level < 5) g.addWeapon('rajada');
       g.addPassive('engine');
-      g.openChest();
+      g.openChest(); g.modalPick(0); g.revelarBaus(0);
       const noBau = g.modal.parts.filter((p) => p.type === 'Image').map((p) => p.texture.key);
       g.modalPick(0);
       const noPainel = g.invItems.filter((p) => p.type === 'Image').map((p) => p.texture.key);

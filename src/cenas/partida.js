@@ -25,6 +25,7 @@ class GameScene extends Phaser.Scene {
     // bônus permanentes das conquistas (src/dados/conquistas.js)
     this.bonusCq = bonusDasConquistas(SAVE);
     this.xpMult = 1 + this.bonusCq.xp; this.creditMult = 1 + this.bonusCq.creditos;
+    this.trocasPendentes = [];
     this.ultimoDanoTempo = 0; this.progressoTimer = 1; this.bausSubchefe = 0; this.chanceArmaTravada = CHANCE_ARMA_TRAVADA;
     this.filaAvisos = []; this.avisoAtivo = false;
     this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
@@ -312,6 +313,7 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-ONE', () => this.modalPick(0));
     this.input.keyboard.on('keydown-TWO', () => this.modalPick(1));
     this.input.keyboard.on('keydown-THREE', () => this.modalPick(2));
+    this.input.keyboard.on('keydown-FOUR', () => this.modalPick(3));
     this.input.keyboard.on('keydown-ENTER', () => this.modalPick(0));
     this.input.keyboard.on('keydown-ESC', () => this.alternarPausa());
     this.input.keyboard.on('keydown-P', () => this.alternarPausa());
@@ -1476,7 +1478,7 @@ class GameScene extends Phaser.Scene {
     const res = this.addWeapon(id);
     if (res === 'new') this.banner('ARMA ESCONDIDA ENCONTRADA!\n' + WEAPONS[id].name, '#f0abfc');
     else if (res === 'up') this.banner(WEAPONS[id].name + ' melhorou!', '#f0abfc');
-    else { this.banner('Sem espaço para armas: virou um baú!', '#fde047'); this.pendingChests++; this.openNextModal(); }
+    else { this.trocasPendentes.push(id); this.openNextModal(); }   // sem espaço: trocar ou descartar
   }
 
   // Arma travada achada: soma no save; na 3ª vez passa a aparecer nas cartas (RN-35)
@@ -1644,6 +1646,7 @@ class GameScene extends Phaser.Scene {
   // ---------- JANELAS (subir de nível / baú) ----------
   openNextModal() {
     if (this.modal || this.ended) return;
+    if (this.trocasPendentes.length) { this.abrirTroca(this.trocasPendentes.shift()); return; }
     if (this.pendingChests > 0) { this.pendingChests--; this.openChest(); return; }
     if (this.pendingLevels > 0) { this.pendingLevels--; this.openLevelUp(); return; }
     this.paused = false;
@@ -1663,18 +1666,33 @@ class GameScene extends Phaser.Scene {
   }
   modalPick(i) {
     if (!this.modal || this.menuPausa) return;
-    if (this.modal.kind === 'level') {
-      const o = this.modal.options[i];
+    const m = this.modal;
+    if (m.kind === 'level') {
+      const o = m.options[i];
       if (!o) return;
       this.applyOption(o);
       this.closeModal();
-    } else if (this.modal.kind === 'chest' && i === 0) this.closeModal();
+    } else if (m.kind === 'chest') {
+      if (m.fase === 'escolher' && i >= 0 && i < 3) this.abrirBauEscolhido(i);
+      else if (m.fase === 'revelado' && i === 0) this.closeModal();
+    } else if (m.kind === 'troca') {
+      const op = m.opcoes[i];
+      if (op === undefined) return;
+      if (op !== 'descartar') {
+        const velha = this.weapons[op].id;
+        this.weapons[op] = { id: m.id, level: 1, evolved: false, timer: 0.3 };
+        this.refreshInventory();
+        this.banner(WEAPONS[velha].name + ' → ' + WEAPONS[m.id].name, '#f0abfc');
+      }
+      this.closeModal();
+    }
   }
   scheduleAutoPick() {
     if (this.autoPickEvt) this.autoPickEvt.remove(false);
     this.autoPickEvt = this.time.delayedCall(this.modal && this.modal.kind === 'chest' ? 1400 : 900, () => {
       if (!this.modal || !this.auto) return;
-      if (this.modal.kind === 'chest') { this.modalPick(0); return; }
+      if (this.modal.kind === 'chest') { this.modalPick(this.modal.fase === 'escolher' ? Math.floor(Math.random() * 3) : 0); return; }
+      if (this.modal.kind === 'troca') { this.modalPick(this.modal.opcoes.length - 1); return; }   // piloto descarta
       // o piloto prefere completar combos
       const opts = this.modal.options;
       let idx = opts.findIndex((o) => o.kind === 'passive' && comboWeaponFor(o.id) && this.hasWeapon(comboWeaponFor(o.id)));
@@ -1699,66 +1717,157 @@ class GameScene extends Phaser.Scene {
     if (this.auto) this.scheduleAutoPick();
   }
 
-  // Baú: evolui uma arma (COMBO) se possível; senão dá melhorias aleatórias
+  // ---------- BAÚ: 3 BAÚS FECHADOS, O JOGADOR ESCOLHE UM ----------
+  // Cada baú já tem um conteúdo sorteado (comum, raro ou épico). Se houver combo pronto
+  // (arma no nível 5 + item certo), o baú escolhido sempre evolui a arma (RN-22).
+  sortearConteudoBau() {
+    const r = Math.random();
+    const raridade = r < BAU_CHANCES.epico ? 'epico' : r < BAU_CHANCES.epico + BAU_CHANCES.raro ? 'raro' : 'comum';
+    return { raridade, melhorias: { comum: 1, raro: 2, epico: 3 }[raridade], creditos: { comum: 30, raro: 60, epico: 100 }[raridade] };
+  }
   openChest() {
     this.pauseForModal();
-    const lines = [];
-    let title = 'BAÚ ABERTO!';
-    let color = '#fde047';
+    const doSubchefe = this.bausSubchefe > 0;
+    if (doSubchefe) this.bausSubchefe--;
+    const conteudos = [0, 1, 2].map(() => this.sortearConteudoBau());
+    // baú de subchefe: chance de um dos três ter uma arma travada que você ainda não tem
+    const travadas = Object.keys(WEAPONS).filter((k) => WEAPONS[k].hidden && !armaLiberada(SAVE, k) && !this.hasWeapon(k));
+    if (doSubchefe && travadas.length && Math.random() < this.chanceArmaTravada) {
+      const c = conteudos[Math.floor(Math.random() * 3)];
+      c.raridade = 'epico'; c.arma = travadas[Math.floor(Math.random() * travadas.length)];
+    }
     const evo = this.evolvable();
-    let combo = null;
-    if (evo.length) {
-      const w = evo[0];
+    const D = 200, parts = [], fixo = (o, d) => { parts.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+    fixo(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
+    const titulo = fixo(this.add.text(W / 2, 92, 'ESCOLHA UM BAÚ', { fontFamily: 'Arial Black, Arial', fontSize: '28px', color: '#fde047', stroke: '#000000', strokeThickness: 6 }).setOrigin(0.5), 2);
+    const subtitulo = fixo(this.add.text(W / 2, 128, 'O que tem dentro é surpresa', { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1' }).setOrigin(0.5), 2);
+    const baus = [0, 1, 2].map((i) => {
+      const x = W / 2 + (i - 1) * 230, y = H / 2 + 20;
+      const brilho = fixo(this.add.circle(x, y, 70, 0xfacc15, 0.12), 1);
+      const bau = fixo(this.add.image(x, y, 'chest').setScale(5), 2).setInteractive({ useHandCursor: true });
+      bau.on('pointerdown', () => this.modalPick(i));
+      bau.on('pointerover', () => brilho.setFillStyle(0xfacc15, 0.28));
+      bau.on('pointerout', () => brilho.setFillStyle(0xfacc15, 0.12));
+      fixo(this.add.text(x, y + 80, String(i + 1), { fontFamily: 'Arial Black, Arial', fontSize: '20px', color: '#94a3b8' }).setOrigin(0.5), 2);
+      // balança, cada um num ritmo
+      const balanco = this.tweens.add({ targets: bau, angle: { from: -7, to: 7 }, yoyo: true, repeat: -1, duration: 260 + i * 40, delay: i * 90, ease: 'Sine.easeInOut' });
+      return { x, y, bau, brilho, balanco };
+    });
+    if (this.auto) fixo(this.add.text(W / 2, H - 50, 'Piloto automático vai escolher sozinho...', { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8' }).setOrigin(0.5), 2);
+    this.modal = { kind: 'chest', fase: 'escolher', conteudos, combo: evo.length ? evo[0] : null, baus, parts, fixo, titulo, subtitulo };
+    if (this.auto) this.scheduleAutoPick();
+  }
+
+  // Abre o baú escolhido: pulo, clarão, raios de luz e a recompensa; os outros mostram o que tinham
+  abrirBauEscolhido(i) {
+    const m = this.modal;
+    m.fase = 'abrindo';
+    m.baus.forEach((b) => { b.balanco.stop(); b.bau.setAngle(0).disableInteractive(); });
+    const esc = m.baus[i];
+    m.baus.forEach((b, k) => { if (k !== i) this.tweens.add({ targets: [b.bau, b.brilho], alpha: 0.35, duration: 250 }); });
+    this.tweens.add({ targets: esc.bau, y: esc.y - 30, scale: 6.2, duration: 220, yoyo: true, ease: 'Quad.easeOut' });
+    this.time.delayedCall(460, () => {
+      if (this.modal !== m || m.fase !== 'abrindo') return;   // já revelado (ou fechado)
+      this.cameras.main.flash(220, 255, 240, 180);
+      esc.bau.setTexture('chest_aberto');
+      const raios = m.fixo(this.add.image(esc.x, esc.y - 10, 'raios').setScale(1.6).setAlpha(0.85), 1);
+      this.tweens.add({ targets: raios, angle: 360, duration: 6000, repeat: -1 });
+      this.revelarBaus(i);
+    });
+  }
+  revelarBaus(i) {
+    const m = this.modal;
+    if (!m || m.kind !== 'chest' || m.fase === 'revelado') return;
+    const c = m.conteudos[i], fixo = m.fixo;
+    const CORES = { comum: '#cbd5e1', raro: '#60a5fa', epico: '#e879f9', combo: '#fde047' };
+    const NOMES = { comum: 'COMUM', raro: 'RARO', epico: 'ÉPICO', combo: 'COMBO!' };
+    const ganhos = [];   // { icone, texto }
+    let raridade = c.raridade;
+    if (m.combo) {
+      const w = m.combo;
       w.evolved = true;
-      combo = w.id;
-      const novo = registrarCombo(SAVE, w.id);    // fica salvo para sempre, para todas as naves
+      raridade = 'combo';
+      const novo = registrarCombo(SAVE, w.id);   // salvo para sempre, para todas as naves
       if (novo) writeSave(SAVE);
-      title = novo ? 'COMBO DESCOBERTO!' : 'COMBO!';
-      color = '#f0abfc';
-      lines.push('★ ' + WEAPONS[w.id].evoName + ' ★' + (novo ? '\nGuardado no códex' : ''));
+      m.comboId = w.id; m.comboNovo = novo;
       this.cameras.main.flash(300, 240, 171, 252);
     } else {
-      // baú de subchefe: chance (CHANCE_ARMA_TRAVADA) de trazer uma arma travada que você ainda não tem
-      const doSubchefe = this.bausSubchefe > 0;
-      if (doSubchefe) this.bausSubchefe--;
-      const travadas = Object.keys(WEAPONS).filter((k) => WEAPONS[k].hidden && !armaLiberada(SAVE, k) && !this.hasWeapon(k));
-      if (doSubchefe && travadas.length && Math.random() < this.chanceArmaTravada) {
-        const id = travadas[Math.floor(Math.random() * travadas.length)];
-        this.contarArmaAchada(id);
-        const res = this.addWeapon(id);
-        lines.push(res === 'full' ? WEAPONS[id].name + ' (sem espaço)' : 'Arma encontrada: ' + WEAPONS[id].name);
-      }
-      const count = Math.random() < 0.2 ? 3 : 1;
-      for (let k = 0; k < count; k++) {
+      for (let k = 0; k < c.melhorias; k++) {
         const opts = this.upgradeOptions().filter((o) => o.level > 1);
         const pool = opts.length ? opts : this.upgradeOptions();
         const o = pool.length ? Phaser.Utils.Array.GetRandom(pool) : { kind: 'gold' };
         this.applyOption(o);
-        lines.push(o.kind === 'weapon' ? WEAPONS[o.id].name + ' → Nv ' + o.level
-          : o.kind === 'passive' ? PASSIVES[o.id].name + ' → Nv ' + o.level : '+' + fmt(25 * this.gal.rewardMult) + ' créditos');
+        if (o.kind === 'weapon') ganhos.push({ icone: iconeDe(o.id), texto: WEAPONS[o.id].name + ' Nv ' + o.level });
+        else if (o.kind === 'passive') ganhos.push({ icone: iconeDe(o.id), texto: PASSIVES[o.id].name + ' Nv ' + o.level });
+        else ganhos.push({ icone: 'coin', texto: '+' + fmt(25 * this.gal.rewardMult) + ' créditos' });
       }
-      const bonus = 30 * this.gal.rewardMult * this.creditMult;
-      this.runCredits += bonus;
-      lines.push('+' + fmt(bonus) + ' créditos');
+      if (c.arma) {
+        this.contarArmaAchada(c.arma);
+        const res = this.addWeapon(c.arma);
+        if (res === 'full') this.trocasPendentes.push(c.arma);
+        ganhos.push({ icone: iconeDe(c.arma), texto: (res === 'full' ? 'Achou: ' : 'Arma nova: ') + WEAPONS[c.arma].name });
+      }
+      if (c.raridade === 'epico') { this.hp = this.mods.maxHp; ganhos.push({ icone: 'heal', texto: 'Vida cheia' }); }
+      const cred = c.creditos * this.gal.rewardMult * this.creditMult;
+      this.runCredits += cred;
+      ganhos.push({ icone: 'coin', texto: '+' + fmt(cred) + ' créditos' });
     }
     this.refreshInventory();
-    const parts = [];
-    parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(200).setInteractive());
-    parts.push(this.add.rectangle(W / 2, H / 2, 460, 260, 0x1c1917).setStrokeStyle(3, 0xfacc15).setScrollFactor(0).setDepth(201));
-    parts.push(this.add.image(W / 2, H / 2 - 95, 'chest').setScale(1.5).setScrollFactor(0).setDepth(202));
-    parts.push(this.add.text(W / 2, H / 2 - 50, title, { fontFamily: 'Arial Black, Arial', fontSize: '26px', color, stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
-    if (combo) {
-      // [arma] + [item] = [evolução], com os mesmos ícones das cartas e do painel
-      const d = WEAPONS[combo], fixo = (o) => o.setScrollFactor(0).setDepth(202);
-      [[W / 2 - 110, iconeDe(combo)], [W / 2, iconeDe(d.evo)], [W / 2 + 110, iconeDe(combo, true)]].forEach(([x, k]) =>
-        parts.push(fixo(this.add.image(x, H / 2 + 5, k).setDisplaySize(56, 56))));
-      ['+', '='].forEach((t, k) => parts.push(fixo(this.add.text(W / 2 - 55 + k * 110, H / 2 + 5, t, { fontFamily: 'Arial Black, Arial', fontSize: '30px', color: '#fde047' }).setOrigin(0.5))));
-      parts.push(fixo(this.add.text(W / 2, H / 2 + 52, lines.join('\n'), { fontFamily: 'Arial', fontSize: '17px', color: '#f5d0fe', align: 'center' }).setOrigin(0.5)));
+    m.titulo.setText(raridade === 'combo' ? 'COMBO!' : 'BAÚ ABERTO!');
+    m.subtitulo.setText('');
+    // raridade de cada baú (o escolhido em destaque; os outros mostram o que você deixou)
+    m.baus.forEach((b, k) => {
+      const r = k === i ? raridade : m.conteudos[k].raridade;
+      fixo(this.add.text(b.x, b.y - 75, (k === i ? '' : 'tinha: ') + NOMES[r], {
+        fontFamily: 'Arial Black, Arial', fontSize: k === i ? '22px' : '13px', color: CORES[r], stroke: '#000000', strokeThickness: 4
+      }).setOrigin(0.5), 3);
+    });
+    // painel da recompensa
+    const y0 = H - 135;
+    fixo(this.add.rectangle(W / 2, y0 + 20, 620, 110, 0x0f172a, 0.95).setStrokeStyle(2, Phaser.Display.Color.HexStringToColor(CORES[raridade]).color), 3);
+    if (m.comboId) {
+      const d = WEAPONS[m.comboId];
+      [[W / 2 - 100, iconeDe(m.comboId)], [W / 2, iconeDe(d.evo)], [W / 2 + 100, iconeDe(m.comboId, true)]].forEach(([x, k]) =>
+        fixo(this.add.image(x, y0 + 8, k).setDisplaySize(48, 48), 4));
+      ['+', '='].forEach((t, k) => fixo(this.add.text(W / 2 - 50 + k * 100, y0 + 8, t, { fontFamily: 'Arial Black, Arial', fontSize: '26px', color: '#fde047' }).setOrigin(0.5), 4));
+      fixo(this.add.text(W / 2, y0 + 50, '★ ' + d.evoName + ' ★' + (m.comboNovo ? '   (COMBO DESCOBERTO! guardado no códex)' : ''), { fontFamily: 'Arial', fontSize: '15px', color: '#f5d0fe' }).setOrigin(0.5), 4);
     } else {
-      parts.push(this.add.text(W / 2, H / 2 + 15, lines.join('\n'), { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(202));
+      ganhos.forEach((g, k) => {
+        const x = W / 2 + (k - (ganhos.length - 1) / 2) * 130;
+        fixo(this.add.image(x, y0 + 2, g.icone).setDisplaySize(38, 38), 4);
+        fixo(this.add.text(x, y0 + 30, g.texto, { fontFamily: 'Arial', fontSize: '12px', color: '#ffffff', align: 'center', wordWrap: { width: 124 } }).setOrigin(0.5, 0), 4);
+      });
     }
-    parts.push(makeButton(this, W / 2, H / 2 + 95, 160, 34, 'CONTINUAR', () => this.modalPick(0), { fixed: true, depth: 203, color: 0x166534, stroke: 0x4ade80 }));
-    this.modal = { kind: 'chest', parts };
+    const btn = makeButton(this, W / 2, H - 28, 180, 34, 'CONTINUAR', () => this.modalPick(0), { fixed: true, depth: 205, color: 0x166534, stroke: 0x4ade80 });
+    m.parts.push(btn);
+    m.fase = 'revelado';
+    if (this.auto) this.scheduleAutoPick();
+  }
+
+  // ---------- SEM ESPAÇO: TROCAR OU DESCARTAR A ARMA NOVA ----------
+  abrirTroca(id) {
+    this.pauseForModal();
+    const D = 200, parts = [], fixo = (o, d) => { parts.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+    fixo(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
+    fixo(this.add.text(W / 2, 70, 'SEM ESPAÇO PARA ARMAS', { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#fde047', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5), 2);
+    fixo(this.add.image(W / 2 - 110, 130, iconeDe(id)).setDisplaySize(52, 52), 2);
+    fixo(this.add.text(W / 2 - 75, 130, 'Nova: ' + WEAPONS[id].name + '\nTrocar por qual arma? Ou descartar a nova.', { fontFamily: 'Arial', fontSize: '15px', color: '#ffffff' }).setOrigin(0, 0.5), 2);
+    // o poder da nave (1º espaço) não pode ser trocado
+    const opcoes = this.weapons.map((w, k) => k).filter((k) => !WEAPONS[this.weapons[k].id].poder);
+    opcoes.push('descartar');
+    opcoes.forEach((op, k) => {
+      const x = W / 2 + (k - (opcoes.length - 1) / 2) * 190, y = H / 2 + 50;
+      const descartar = op === 'descartar';
+      const w = descartar ? null : this.weapons[op];
+      const btn = makeButton(this, x, y, 170, 200, '', () => this.modalPick(k), { fixed: true, depth: D + 1, color: descartar ? 0x450a0a : 0x1e1b4b, stroke: descartar ? 0xf87171 : 0x818cf8 });
+      parts.push(btn);
+      fixo(this.add.text(x - 72, y - 92, String(k + 1), { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8', fontStyle: 'bold' }), 2);
+      const im = fixo(this.add.image(x, y - 35, descartar ? iconeDe(id) : iconeDe(w.id, w.evolved)).setDisplaySize(64, 64), 2);
+      if (descartar) im.setTint(0x64748b);
+      fixo(this.add.text(x, y + 25, descartar ? 'DESCARTAR' : 'TROCAR', { fontFamily: 'Arial', fontSize: '12px', color: descartar ? '#fca5a5' : '#fde68a', fontStyle: 'bold' }).setOrigin(0.5), 2);
+      fixo(this.add.text(x, y + 50, descartar ? 'Fica sem a ' + WEAPONS[id].name : WEAPONS[w.id].name + (w.evolved ? ' ★' : ' Nv ' + w.level), { fontFamily: 'Arial', fontSize: '13px', color: '#ffffff', align: 'center', wordWrap: { width: 150 } }).setOrigin(0.5, 0), 2);
+    });
+    this.modal = { kind: 'troca', id, opcoes, parts };
     if (this.auto) this.scheduleAutoPick();
   }
 

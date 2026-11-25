@@ -34,7 +34,7 @@ test('CT-43/44/46: combo feito fica salvo e aparece no códex de outra nave; os 
     await G(j.pagina, () => {
       const g = game.scene.getScene('Game');
       while (g.weapons[0].level < 5) g.addWeapon('rajada');
-      g.addPassive('engine'); g.openChest(); g.modalPick(0);
+      g.addPassive('engine'); g.openChest(); g.modalPick(0); g.revelarBaus(0); g.modalPick(0);
       g.scene.start('Hangar');
     });
     await esperarCena(j.pagina, 'Hangar');
@@ -128,7 +128,13 @@ test('CT-52/53: arma travada não aparece nas cartas; achada 3 vezes, passa a ap
       const antes = vistas().has('disc');
       // baú de subchefe com arma travada (chance de 100% só neste teste)
       g.chanceArmaTravada = 1;
-      for (let k = 0; k < 3; k++) { g.bausSubchefe = 1; g.openChest(); g.modalPick(0); g.weapons = g.weapons.filter((w) => w.id !== 'disc' && w.id !== 'chain'); }
+      for (let k = 0; k < 3; k++) {
+        g.bausSubchefe = 1; g.openChest();
+        const i = g.modal.conteudos.findIndex((c) => c.arma);   // escolhe o baú que tem a arma
+        g.modalPick(i); g.revelarBaus(i); g.modalPick(0);
+        while (g.modal) g.modalPick(g.modal.opcoes ? g.modal.opcoes.length - 1 : 0);   // fecha trocas, se houver
+        g.weapons = g.weapons.filter((w) => w.id !== 'disc' && w.id !== 'chain');
+      }
       return { antes, achadas: SAVE.stats.armasAchadas, depois: vistas().has('disc') || vistas().has('chain') };
     });
     assert.equal(r.antes, false);
