@@ -28,3 +28,20 @@ teste esconde o bug.
   o dono ajustar sem mexer no código (RN-07).
 - O dono é leigo: explique em português simples o que
   mudou e como testar no navegador.
+
+## Desempenho (o jogo precisa rodar em celular e notebook fraco)
+Meça antes e depois de mudar algo pesado: npm run desempenho -- 120
+- Camada que cobre a tela inteira (tileSprite ou imagem W×H)
+  custa caro: no máximo 2. Uma camada a mais derrubou o teste
+  de 60 para 27 quadros/s.
+- O Phaser desenha tudo que está visível, mesmo fora da câmera.
+  Objetos grandes ou numerosos e parados (nebulosas, meteoros,
+  locais) são escondidos longe da tela em esconderLonge().
+- O que nasce e morre muito (inimigos, tiros, gemas, faíscas)
+  vem de grupo com maxSize e é reaproveitado (get/disable),
+  nunca add + destroy a cada vez: criar e destruir gera
+  "lixo" e engasgos.
+- Dentro de update(): nada de new Map/new Array/filter/map em
+  listas grandes a cada quadro; reaproveite (ex.: gradeInimigos).
+- Guarde em variável o que é buscado toda hora (cache), em vez
+  de percorrer todos os inimigos várias vezes no mesmo quadro.

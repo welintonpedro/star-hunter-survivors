@@ -22,7 +22,10 @@ class GameScene extends Phaser.Scene {
     this.chefesFeitos = EVENTOS.chefes.map(() => false);
     this.naveMae = null; this.vitoriaRegistrada = false; this.primeiraVitoria = false;
     this.menuPausa = null;
-    this.sparkCount = 0; this.xpMult = 1; this.creditMult = 1;
+    this.xpMult = 1; this.creditMult = 1;
+    this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
+    this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
+    this.cullTimer = 0;
     this.weapons = []; this.passives = {};
     this.orbs = []; this.orbAngle = 0; this.missiles = []; this.discs = [];
     this.minimapTimer = 0;
@@ -32,8 +35,10 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.removeBounds();
     this.aproximarTimer = 0;
     this.cameras.main.setBackgroundColor(this.gal.bg);
-    this.add.image(0, 0, 'fundo_' + this.gi).setOrigin(0).setScrollFactor(0).setDepth(-32);
-    this.mid = this.add.tileSprite(0, 0, W, H, 'stars_mid').setOrigin(0).setScrollFactor(0).setDepth(-29).setAlpha(0.85);
+    // Fundo: só 2 camadas de estrelas que cobrem a tela (cada camada de tela inteira custa caro
+    // em computador e celular fracos) e 2 galáxias distantes pequenas, paradas.
+    this.add.image(W * 0.18, H * 0.78, 'galaxia_distante').setScrollFactor(0).setDepth(-31).setAlpha(0.22).setTint(this.gal.starTint);
+    this.add.image(W * 0.8, H * 0.16, 'galaxia_distante').setScrollFactor(0).setDepth(-31).setAlpha(0.15).setScale(0.7).setRotation(1.2);
     this.far = this.add.tileSprite(0, 0, W, H, 'stars_far').setOrigin(0).setScrollFactor(0).setTint(this.gal.starTint).setAlpha(0.7).setDepth(-30);
     this.near = this.add.tileSprite(0, 0, W, H, 'stars_near').setOrigin(0).setScrollFactor(0).setDepth(-29);
     this.buildWorld();
@@ -128,6 +133,24 @@ class GameScene extends Phaser.Scene {
     });
     this.nebulas.forEach((n) => this.aproximarObj(n));
     if (this.naveMae && this.naveMae.active) this.aproximarObj(this.naveMae);
+  }
+
+  // Só desenha o que está perto da tela, e meteoro longe sai da física (RN-12).
+  // Phaser desenha tudo que é visível, mesmo fora da câmera: as nebulosas grandes e
+  // transparentes, sozinhas, custavam ~25% dos quadros por segundo.
+  esconderLonge() {
+    const px = this.player.x, py = this.player.y, mx = W / 2 + 200, my = H / 2 + 200;
+    const perto = (o, extra) => Math.abs(o.x - px) < mx + extra && Math.abs(o.y - py) < my + extra;
+    this.nebulas.forEach((n) => n.setVisible(perto(n, n.displayWidth / 2)));
+    this.pois.forEach((p) => {
+      const v = perto(p, p.img.displayWidth / 2 + 120);
+      p.img.setVisible(v && !(p.type === 'relic' && p.done)); p.label.setVisible(v);
+    });
+    this.rocks.children.iterate((r) => {
+      if (!r || !r.active) return;
+      r.setVisible(perto(r, 60));
+      r.body.enable = Math.abs(r.x - px) < 1500 && Math.abs(r.y - py) < 1500;
+    });
   }
 
   spawnRocks() {
@@ -484,7 +507,6 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.far.tilePositionX = cam.scrollX * 0.2; this.far.tilePositionY = cam.scrollY * 0.2;
     this.near.tilePositionX = cam.scrollX * 0.5; this.near.tilePositionY = cam.scrollY * 0.5;
-    this.mid.tilePositionX = cam.scrollX * 0.32; this.mid.tilePositionY = cam.scrollY * 0.32;
     if (this.ended || this.paused || this.menuPausa) return;
     const dt = Math.min(delta, 50) / 1000;
     this.elapsed += dt;
@@ -500,6 +522,7 @@ class GameScene extends Phaser.Scene {
     this.updatePickups();
     this.updatePOIs(dt);
     this.updateNaveMae(dt);
+    this.updateFaiscas(dt);
 
     this.bullets.children.iterate((b) => { if (b && b.active) { b.life -= dt; if (b.life <= 0) b.disableBody(true, true); } });
     this.ebullets.children.iterate((b) => {
@@ -519,9 +542,15 @@ class GameScene extends Phaser.Scene {
     if (this.bankTimer > 10) { this.bankTimer = 0; this.bankCredits(); }
     this.aproximarTimer -= dt;
     if (this.aproximarTimer <= 0) { this.aproximarTimer = 0.4; this.aproximarTudo(); }
+    this.cullTimer -= dt;
+    if (this.cullTimer <= 0) { this.cullTimer = 0.2; this.esconderLonge(); }
     // se o jogo ficar lento, reduz os efeitos visuais antes de mexer na jogabilidade (RN-12)
     this.fpsTimer = (this.fpsTimer || 0) - dt;
-    if (this.fpsTimer <= 0) { this.fpsTimer = 2; this.efeitosReduzidos = this.game.loop.actualFps < 40; }
+    if (this.fpsTimer <= 0) {
+      this.fpsTimer = 2;
+      this.efeitosReduzidos = this.game.loop.actualFps < 40;
+      this.far.setVisible(!this.efeitosReduzidos);   // jogo lento: some a camada de estrelas distantes
+    }
     this.minimapTimer -= dt;
     if (this.minimapTimer <= 0) { this.minimapTimer = 0.12; this.drawMinimap(); }
     this.updateHUD();
@@ -795,15 +824,19 @@ class GameScene extends Phaser.Scene {
     const px = this.player.x, py = this.player.y;
     this.gfxInimigos.clear();   // linhas de mira, auras, escudos: redesenhados a cada quadro
     this.lentidao = 1;          // a Névoa diminui isso
-    const CELL = 48, grid = new Map();
-    const list = [];
+    const CELL = 48, grid = this.gradeInimigos;
+    // devolve as listas do quadro anterior ao estoque e limpa a grade (sem criar Map novo)
+    grid.forEach((arr) => { arr.length = 0; this.estoqueListas.push(arr); });
+    grid.clear();
+    const list = this.listaInimigos || (this.listaInimigos = []);
+    list.length = 0;
     this.enemies.children.iterate((e) => {
       if (!e || !e.active) return;
       this.aproximarObj(e);
       list.push(e);
       const key = Math.floor(e.x / CELL) * 100003 + Math.floor(e.y / CELL);
       let arr = grid.get(key);
-      if (!arr) { arr = []; grid.set(key, arr); }
+      if (!arr) { arr = this.estoqueListas.pop() || []; grid.set(key, arr); }
       arr.push(e);
     });
     for (let i = 0; i < list.length; i++) {
@@ -1017,18 +1050,27 @@ class GameScene extends Phaser.Scene {
     else if (roll < 0.85) this.dropGem(r.x, r.y, 5);
   }
 
+  // Faíscas de explosão: vêm de um estoque reaproveitado (pooling), sem criar e destruir
+  // imagens e animações a cada explosão
   boom(x, y, n, color) {
     if (this.efeitosReduzidos) n = Math.ceil(n / 3);   // jogo lento: menos faíscas, jogabilidade igual
     for (let i = 0; i < n; i++) {
-      if (this.sparkCount > 160) return;
-      this.sparkCount++;
-      const s = this.add.image(x, y, 'spark').setTint(color).setDepth(9);
+      const s = this.faiscas.get(x, y);
+      if (!s) return;                                    // estoque cheio: não cria mais
       const a = Math.random() * Math.PI * 2, d = 20 + Math.random() * (n > 10 ? 120 : 30);
-      this.tweens.add({
-        targets: s, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, scale: 0.3,
-        duration: 300 + Math.random() * 300, onComplete: () => { s.destroy(); this.sparkCount--; }
-      });
+      const dur = 0.3 + Math.random() * 0.3;
+      s.setActive(true).setVisible(true).setPosition(x, y).setTint(color).setAlpha(1).setScale(1).setDepth(9);
+      s.vx = Math.cos(a) * d / dur; s.vy = Math.sin(a) * d / dur; s.vida = dur; s.vidaMax = dur;
     }
+  }
+  updateFaiscas(dt) {
+    this.faiscas.children.iterate((s) => {
+      if (!s || !s.active) return;
+      s.vida -= dt;
+      if (s.vida <= 0) { s.setActive(false).setVisible(false); return; }
+      const f = s.vida / s.vidaMax;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.setAlpha(f).setScale(0.3 + 0.7 * f);
+    });
   }
 
   // ---------- ARMAS ----------

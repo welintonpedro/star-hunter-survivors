@@ -190,8 +190,10 @@ function nebulosaTextura(scene, key, semente) {
   tex.refresh();
 }
 // Estrelas brilhantes em cruz (camada do meio)
+// Desenha por cima de uma textura de estrelas que já existe (assim fica uma camada só)
 function estrelasBrilhantes(scene, key, size, count) {
-  const tex = scene.textures.createCanvas(key, size, size);
+  const tex = scene.textures.exists(key) ? scene.textures.get(key) : scene.textures.createCanvas(key, size, size);
+  size = tex.getSourceImage().width;
   const ctx = tex.getContext();
   const cores = ['#ffffff', '#bfdbfe', '#fde68a', '#fbcfe8', '#a5f3fc'];
   for (let i = 0; i < count; i++) {
@@ -212,23 +214,6 @@ function galaxiaDistante(scene, key) {
     const braco = i % 2, t = (i / 260) * 3.2, a = t * 2.2 + braco * Math.PI, r = 6 + t * 22;
     ctx.fillStyle = 'rgba(255,255,255,' + (0.5 - t * 0.12).toFixed(2) + ')';
     ctx.fillRect(80 + Math.cos(a) * r + (Math.random() - 0.5) * 6, 80 + Math.sin(a) * r * 0.55 + (Math.random() - 0.5) * 4, 2, 2);
-  }
-  tex.refresh();
-}
-// Fundo com leve degradê no centro, na cor da galáxia
-function fundoTextura(scene, key, corBg, corBrilho) {
-  const tex = scene.textures.createCanvas(key, W, H), ctx = tex.getContext();
-  const b = _rgb(corBg);
-  ctx.fillStyle = _cor(b, 0); ctx.fillRect(0, 0, W, H);
-  const grd = ctx.createRadialGradient(W / 2, H / 2, 40, W / 2, H / 2, W * 0.7);
-  grd.addColorStop(0, _cor(_rgb(corBrilho), -0.6, 0.35)); grd.addColorStop(1, 'rgba(0,0,0,0.4)');
-  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
-  // duas galáxias bem distantes, paradas no fundo
-  if (scene.textures.exists('galaxia_distante')) {
-    const img = scene.textures.get('galaxia_distante').getSourceImage();
-    ctx.globalAlpha = 0.22; ctx.drawImage(img, W * 0.12, H * 0.62, 120, 120);
-    ctx.globalAlpha = 0.15; ctx.drawImage(img, W * 0.72, H * 0.08, 90, 90);
-    ctx.globalAlpha = 1;
   }
   tex.refresh();
 }

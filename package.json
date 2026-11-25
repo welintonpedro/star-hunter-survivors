@@ -4,7 +4,8 @@
   "description": "Jogo de navinha estilo Vampire Survivors + idle (Phaser 3).",
   "scripts": {
     "start": "npx serve .",
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\"",
+    "desempenho": "node tests/ajuda/medir-desempenho.js"
   },
   "devDependencies": {
     "phaser": "3.80.1",
