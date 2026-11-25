@@ -9,7 +9,7 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 
 ### E1 — Mudança para o GitHub
 - **CA-01** Está pronto quando o jogo abre pelo link de teste no celular e funciona igual à v0.2.
-- **CA-02** Está pronto quando quem já jogava a v0.2 abre a nova versão e continua com os mesmos créditos, naves e melhorias.
+- **CA-02** Está pronto quando quem joga pelo link novo atualiza para uma versão nova e continua com os mesmos créditos, naves e melhorias.
 - **CA-03** Está pronto quando, num navegador que não deixa salvar, o jogo roda e avisa uma única vez que o progresso não será guardado.
 - **CA-04** Está pronto quando o modo de teste deixa pular o relógio da partida e não aparece para quem joga normalmente.
 - **CA-05** Está pronto quando automático (60%), progresso offline, hangar, 3 naves e 3 galáxias continuam funcionando como antes.
@@ -70,8 +70,8 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | ID | Situação | Ação | Resultado esperado |
 |---|---|---|---|
 | CT-01 | Repositório publicado no GitHub Pages | Abrir o link no celular e no computador | Jogo carrega, hangar aparece, partida inicia sem erro no console |
-| CT-02 | Save v0.2 com 1.500 créditos, nave Titã comprada e 3 melhorias | Abrir a v0.3 | Mesmos créditos, nave e melhorias; save passa a ter número de versão |
-| CT-03 | Save v0.2 corrompido (texto inválido) | Abrir a v0.3 | Jogo não trava; avisa que o save não pôde ser lido; não apaga o save original sem aviso |
+| CT-02 | Save no link novo, sem número de versão, com 1.500 créditos, nave Titã comprada e 3 melhorias | Abrir a versão com o save versionado | Mesmos créditos, nave e melhorias; save passa a ter número de versão |
+| CT-03 | Save corrompido (texto inválido) | Abrir o jogo | Jogo não trava; avisa que o save não pôde ser lido; não apaga o save original sem aviso |
 | CT-04 | localStorage bloqueado (aba anônima restrita) | Abrir o jogo e jogar 2 partidas | Aviso aparece uma vez só; jogo funciona normalmente |
 | CT-05 | Link sem `?teste=1` | Procurar controles de pular tempo | Não existem |
 | CT-06 | Link com `?teste=1` | Avançar relógio para 9:55 | Partida segue a partir de 9:55 |

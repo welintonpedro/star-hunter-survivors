@@ -12,9 +12,11 @@ teste esconde o bug.
 ## Pegadinhas
 - Phaser 3 vem por CDN, sem etapa de build: o GitHub
   Pages publica os arquivos como estão.
-- A chave do save é star_hunter_survivors_save_v1. Os
-  jogadores da v0.2 têm progresso nela; mudar o formato
-  exige conversão (RN-42), senão perdem créditos e naves.
+- A chave do save é star_hunter_survivors_save_v1. Quem
+  joga pelo link do GitHub Pages tem progresso nela; mudar
+  o formato exige converter pela versão do save (RN-42),
+  senão perde créditos e naves. Save do Game Creator AI
+  não chega aqui (outro site), então não há o que converter.
 - Toda a arte é gerada por código (ART, pixel por letra).
   Não há pasta de imagens; ícones novos seguem esse padrão.
 - Números de equilíbrio (ondas, inimigos, chefes,

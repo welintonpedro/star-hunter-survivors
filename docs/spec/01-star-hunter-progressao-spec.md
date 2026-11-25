@@ -85,7 +85,8 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - **RN-41** O projeto passa a viver no GitHub e é trabalhado com o Claude Code. [DECIDIDO]
   - O código é dividido em arquivos (cenas, armas, inimigos, mapa, conquistas, tabelas de equilíbrio), e uma versão de teste é publicada no GitHub Pages para abrir no celular. [SUPOSIÇÃO]
   - O Game Creator AI deixa de ser o lugar principal deste jogo. [SUPOSIÇÃO]
-- **RN-42** O save da v0.2 é convertido sem perder créditos, naves nem melhorias. [SUPOSIÇÃO]
+- **RN-42** Não há conversão do save da v0.2: o navegador guarda o save por site, então o progresso do Game Creator AI não chega ao link novo e ninguém tem save v0.2 nele. [DECIDIDO em 25/11/2026]
+  - A partir de agora o save tem número de versão, para que mudanças futuras de formato possam converter o progresso de quem joga pelo link novo. [DECIDIDO em 25/11/2026]
 - **RN-43** Se o navegador não tiver localStorage, o jogo roda sem salvar e avisa uma vez. [SUPOSIÇÃO]
 - **RN-44** Jogo de um jogador só, sem login; tudo fica no aparelho. [SUPOSIÇÃO]
 - **RN-45** Existe um modo de teste (ex.: link com `?teste=1`) que permite avançar o relógio da partida, para testar eventos dos 10, 20 e 30 min sem jogar meia hora. Ele não aparece para o jogador comum. [SUPOSIÇÃO — lacuna preenchida por mim]
@@ -111,7 +112,7 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - Armas liberadas nas cartas.
 - Estatísticas: abates, tempo total, melhor tempo por galáxia e por nave, locais descobertos por galáxia.
 - Galáxias conquistadas e por qual nave.
-- Número de versão do save, para converter saves antigos.
+- Número de versão do save, para converter o formato em versões futuras.
 
 ### 3.3 Tabelas de ajuste (arquivos separados da lógica)
 - Curva de ondas por minuto, por galáxia.
@@ -141,6 +142,7 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - Novas galáxias além das 3.
 - Novas armas comuns além das 6 atuais (exceto os 3 poderes exclusivos).
 - Loja com dinheiro real.
+- Converter o save da v0.2 (do Game Creator AI) para o link novo.
 
 ---
 
@@ -150,7 +152,7 @@ Cada entrega deixa o jogo jogável e testável sozinha.
 
 ### E1 — Mudança para o GitHub, sem mudar o jogo
 - Leva a v0.2 para o repositório, dividida em arquivos; publica a versão de teste no GitHub Pages.
-- Adiciona número de versão ao save, conversão do save v0.2 e aviso quando não há localStorage.
+- Adiciona número de versão ao save e aviso quando não há localStorage.
 - Adiciona o modo de teste (avançar relógio).
 - **Cobre:** RN-41, RN-42, RN-43, RN-44, RN-45, RN-40.
 - **Valor sozinha:** o mesmo jogo de hoje, guardado com histórico e jogável pelo celular via link.
