@@ -97,7 +97,7 @@ function _cor(rgb, f, a) {
 }
 // tipo: 'gas' (faixas), 'rocha' (crateras), 'oceano' (continentes), 'gelo' (calotas)
 function planetaTextura(scene, key, corBase, corDetalhe, tipo, aneis, semente) {
-  const S = 420, C = S / 2, R = 140;
+  const S = 600, C = S / 2, R = 140;   // folha larga o bastante para os anéis não serem cortados
   const rnd = mulberry32(semente);
   const base = _rgb(corBase), det = _rgb(corDetalhe);
   const tex = scene.textures.createCanvas(key, S, S);
@@ -153,7 +153,12 @@ function planetaTextura(scene, key, corBase, corDetalhe, tipo, aneis, semente) {
       }
       ctx.fill();
     }
-    if (tipo === 'gelo') { ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(C - R, C - R, R * 2, R * 0.35); ctx.fillRect(C - R, C + R * 0.7, R * 2, R * 0.3); }
+    if (tipo === 'gelo') {
+      // calotas polares curvas (acompanham a esfera)
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath(); ctx.ellipse(C, C - R * 0.95, R * 0.85, R * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(C, C + R * 0.98, R * 0.7, R * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    }
   }
   // luz (cima-esquerda) e sombra (baixo-direita): dá o volume
   const luz = ctx.createRadialGradient(C - R * 0.45, C - R * 0.45, R * 0.1, C - R * 0.2, C - R * 0.2, R * 1.25);
