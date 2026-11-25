@@ -1402,15 +1402,19 @@ class GameScene extends Phaser.Scene {
   dropGem(x, y, val) {
     const g = this.gems.get(x, y, 'gem');
     if (!g) return;
+    // azul = pouca XP, roxa = média, vermelha = muita (como no Vampire Survivors)
+    g.setTexture(val >= 10 ? 'gem3' : val >= 3 ? 'gem2' : 'gem');
     g.setActive(true).setVisible(true).setPosition(x, y).setDepth(4);
-    g.val = val; g.magnetized = false;
-    g.setScale(val >= 5 ? 2 : val > 1 ? 1.6 : 1);
+    g.val = val; g.magnetized = false; g.fase = Math.random() * 6;
+    g.escalaBase = val >= 10 ? 1.8 : val >= 3 ? 1.5 : 1.3;
+    g.setScale(g.escalaBase);
   }
   updateGems(dt) {
     const px = this.player.x, py = this.player.y, mag = this.mods.magnet;
     this.gems.children.iterate((g) => {
       if (!g || !g.active) return;
       this.aproximarObj(g);
+      g.setScale(g.escalaBase * (1 + 0.15 * Math.sin(this.elapsed * 6 + g.fase)));   // pulsa de leve
       const dx = px - g.x, dy = py - g.y, d = Math.hypot(dx, dy);
       if (d < 22) { g.setActive(false).setVisible(false); this.gainXp(g.val); return; }
       if (d > 1600 && !g.magnetized) { g.setActive(false).setVisible(false); return; }

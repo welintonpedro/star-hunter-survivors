@@ -37,7 +37,13 @@ class BootScene extends Phaser.Scene {
     pixelTexture(this, 'wbox', ART.wbox, { a: '#581c87', b: '#c084fc', c: '#f5d0fe' }, 4);
     gfxTexture(this, 'bullet', 10, 10, (g) => { g.fillStyle(0xfde047); g.fillCircle(5, 5, 4); g.fillStyle(0xffffff); g.fillCircle(5, 5, 2); });
     gfxTexture(this, 'ebullet', 12, 12, (g) => { g.fillStyle(0xf43f5e); g.fillCircle(6, 6, 5); g.fillStyle(0xffe4e6); g.fillCircle(6, 6, 2); });
-    gfxTexture(this, 'gem', 10, 10, (g) => { g.fillStyle(0x22d3ee); g.fillTriangle(5, 0, 10, 5, 5, 10); g.fillTriangle(5, 0, 0, 5, 5, 10); });
+    // gemas de XP: contorno escuro (aparece em qualquer fundo), brilho branco; cor pelo valor
+    [['gem', 0x38bdf8, 0x0c4a6e], ['gem2', 0xc084fc, 0x3b0764], ['gem3', 0xf87171, 0x450a0a]].forEach(([k, cor, borda]) =>
+      gfxTexture(this, k, 18, 18, (g) => {
+        g.fillStyle(borda); g.fillTriangle(9, 0, 18, 9, 9, 18); g.fillTriangle(9, 0, 0, 9, 9, 18);
+        g.fillStyle(cor); g.fillTriangle(9, 3, 15, 9, 9, 15); g.fillTriangle(9, 3, 3, 9, 9, 15);
+        g.fillStyle(0xffffff, 0.9); g.fillTriangle(9, 4, 12, 8, 7, 8);
+      }));
     gfxTexture(this, 'orb', 16, 16, (g) => { g.fillStyle(0x38bdf8, 0.5); g.fillCircle(8, 8, 8); g.fillStyle(0xe0f2fe); g.fillCircle(8, 8, 4); });
     gfxTexture(this, 'spark', 4, 4, (g) => { g.fillStyle(0xffffff); g.fillRect(0, 0, 4, 4); });
     gfxTexture(this, 'missile', 8, 16, (g) => {
