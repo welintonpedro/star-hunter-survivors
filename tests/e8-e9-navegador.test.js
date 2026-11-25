@@ -49,7 +49,7 @@ test('CT-43/44/46: combo feito fica salvo e aparece no códex de outra nave; os 
     }, CLICAR);
     assert.deepEqual(r.combos, ['rajada']);
     assert.equal(r.evo, true, 'o combo descoberto deveria aparecer no códex');
-    assert.equal(r.ocultos, 3 * 8, 'os 8 combos que faltam aparecem como [?] + [?] = [?]');
+    assert.equal(r.ocultos, 3 * 10, 'os 10 combos que faltam aparecem como [?] + [?] = [?] (11 combos desde a RN-63; ok do dono em 25/11)');
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
@@ -143,7 +143,7 @@ test('CT-52/53: arma travada não aparece nas cartas; achada 3 vezes, passa a ap
   } finally { await j.fechar(); }
 });
 
-test('RN-55: meteoro e cristal quebrados soltam só créditos (cristal vale mais; ok do dono em 25/11)', async () => {
+test('RN-55/62: meteoro solta um item sorteado; cristal solta 60 créditos e mais um item (ok do dono em 25/11)', async () => {
   const j = await abrir();
   try {
     await partida(j, 0);
@@ -155,7 +155,10 @@ test('RN-55: meteoro e cristal quebrados soltam só créditos (cristal vale mais
       const itens = []; g.pickups.children.iterate((p) => { if (p && p.active) itens.push(p.ptype + ':' + p.extra); });
       return itens.sort();
     });
-    assert.deepEqual(r, ['coin:12', 'coin:60']);
+    const validos = ['coin:12', 'heal:undefined', 'magnet:undefined', 'congelar:undefined', 'lento:undefined', 'chamas:undefined'];
+    assert.equal(r.length, 3, 'cristal: 2 itens; meteoro: 1 item');
+    assert.ok(r.includes('coin:60'), 'cristal sempre dá 60 créditos');
+    r.filter((x) => x !== 'coin:60').forEach((x) => assert.ok(validos.includes(x), x));
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });

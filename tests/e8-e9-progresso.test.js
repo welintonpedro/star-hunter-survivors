@@ -59,7 +59,7 @@ test('CT-50: são ~20 conquistas, cada uma com nome, descrição e prêmio que m
     assert.ok(['bonus', 'arma'].includes(c.premio.tipo), c.id);
     assert.ok(textoDoPremio(c.premio, 'Arma').length > 3, c.id);
   });
-  assert.equal(TOTAL_COMBOS, 9);
+  assert.equal(TOTAL_COMBOS, 11);   // 8 armas comuns + 3 poderes desde a RN-63 (ok do dono em 25/11)
 });
 
 test('CT-51/57: conquistas desbloqueiam quando a condição é cumprida, uma vez só', () => {
