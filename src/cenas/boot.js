@@ -6,9 +6,6 @@ class BootScene extends Phaser.Scene {
   create() {
     SHIPS.forEach((s) => pixelTexture(this, 'ship_' + s.id, ART[s.art], s.palette, 3));
     GALAXIES.forEach((g, i) => {
-      pixelTexture(this, 'bug_' + i, ART.bug, g.alien, ENEMY_TYPES.bug.scale);
-      pixelTexture(this, 'diamond_' + i, ART.diamond, g.alien, ENEMY_TYPES.diamond.scale);
-      pixelTexture(this, 'saucer_' + i, ART.saucer, g.alien, ENEMY_TYPES.saucer.scale);
       bossTexture(this, 'boss_' + i, g);
       planetTexture(this, 'planet_' + i, g.planet);
       gfxTexture(this, 'nest_' + i, 120, 120, (gr) => {
@@ -18,6 +15,14 @@ class BootScene extends Phaser.Scene {
         gr.fillStyle(b);
         [[40, 45], [70, 65], [60, 35], [50, 80], [80, 45]].forEach((p) => gr.fillEllipse(p[0], p[1], 14, 18));
       });
+    });
+    // os 30 inimigos e os filhotes (src/dados/inimigos.js)
+    Object.entries(INIMIGOS).forEach(([id, d]) => pixelTexture(this, 'ini_' + id, ARTE_INIMIGOS[d.arte || id], d.cores, d.scale));
+    gfxTexture(this, 'mina', 22, 22, (g) => {
+      g.fillStyle(0x7f1d1d); g.fillCircle(11, 11, 9);
+      g.fillStyle(0xef4444); g.fillCircle(11, 11, 5);
+      g.fillStyle(0xfde047); g.fillCircle(11, 11, 2);
+      g.lineStyle(2, 0x450a0a); [[11, 0, 11, 4], [11, 18, 11, 22], [0, 11, 4, 11], [18, 11, 22, 11]].forEach((l) => g.lineBetween(l[0], l[1], l[2], l[3]));
     });
     pixelTexture(this, 'rock', ART.rock, { a: '#3f3f46', b: '#78716c', c: '#57534e' }, 4);
     pixelTexture(this, 'crystal', ART.rock, { a: '#164e63', b: '#22d3ee', c: '#a5f3fc' }, 4);

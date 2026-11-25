@@ -63,6 +63,19 @@ function escolherTipo(pesos, r) {
   return tipos[tipos.length - 1];
 }
 
+// Chance de cada inimigo da galáxia no tempo t: só quem já entrou; o recém-chegado
+// (até DESTAQUE_NOVO segundos depois de entrar) aparece 3x mais, para o jogador notar a novidade.
+const DESTAQUE_NOVO = 90;
+function pesosNoTempo(lista, defs, t) {
+  const pesos = {};
+  lista.forEach((id) => {
+    const d = defs[id];
+    if (d.entra < 0 || d.entra > t) return;
+    pesos[id] = d.peso * (t - d.entra < DESTAQUE_NOVO ? 3 : 1);
+  });
+  return pesos;
+}
+
 // Quantos eventos de uma série repetida ({primeiro, intervalo, ultimo}) já aconteceram até t
 function quantosAte(t, regra) {
   if (t < regra.primeiro) return 0;
@@ -84,5 +97,5 @@ function proximoEvento(t, eventos) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { linhaDoMinuto, novoEstadoOndas, passoNascimento, escolherTipo, quantosAte, proximoEvento };
+  module.exports = { linhaDoMinuto, novoEstadoOndas, passoNascimento, escolherTipo, pesosNoTempo, quantosAte, proximoEvento };
 }
