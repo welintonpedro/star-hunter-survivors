@@ -10,10 +10,9 @@
 
 const W = 960, H = 540;
 const WORLD = 6000;              // tamanho do mapa de cada galáxia
-const BOSS_TIME = 240;           // chefe aos 4 minutos
-const ELITE_EVERY = 60;          // subchefe a cada minuto
-const SWARM_EVERY = 50;          // enxame atravessando a tela
-const RING_EVERY = 40;           // cerco em anel
+// Horários de chefes, subchefes, cercos e enxames: src/dados/eventos.js
+// Quantidade de inimigos por minuto: src/dados/ondas.js
+const METEORO_PERTO = 150;       // meteoro a essa distância da nave é atacado como inimigo (RN-46)
 const OFFLINE_CAP_HOURS = 8;
 const OFFLINE_EFFICIENCY = 0.3;
 const AUTO_REWARD_MULT = 0.6;

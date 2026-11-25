@@ -14,12 +14,11 @@ function tempoAlvo(atual, alvo) {
 // Quantos eventos repetidos (cerco, enxame, subchefe) já "passaram" num certo tempo.
 // Ao pular o relógio, os contadores vão direto para esse valor, para os eventos
 // que ficaram para trás não aparecerem todos de uma vez.
+// Cada ritmo pode ser um número (a cada N segundos) ou uma série {primeiro, intervalo, ultimo}.
 function contadoresNoTempo(t, ritmos) {
-  return {
-    ringCount: Math.floor(t / ritmos.ring),
-    swarmCount: Math.floor(t / ritmos.swarm),
-    eliteCount: Math.floor(t / ritmos.elite)
-  };
+  const _quantos = typeof quantosAte !== 'undefined' ? quantosAte : require('./ritmo.js').quantosAte;
+  const conta = (r) => (typeof r === 'number' ? Math.floor(t / r) : _quantos(t, r));
+  return { ringCount: conta(ritmos.ring), swarmCount: conta(ritmos.swarm), eliteCount: conta(ritmos.elite) };
 }
 
 const MODO_TESTE = typeof location !== 'undefined' && modoTesteAtivo(location.search);
@@ -28,7 +27,10 @@ const MODO_TESTE = typeof location !== 'undefined' && modoTesteAtivo(location.se
 function criarPainelTeste(scene) {
   scene.testeIrPara = (segundos) => {
     const t = tempoAlvo(scene.elapsed, segundos);
-    Object.assign(scene, contadoresNoTempo(t, { ring: RING_EVERY, swarm: SWARM_EVERY, elite: ELITE_EVERY }));
+    Object.assign(scene, contadoresNoTempo(t, { ring: EVENTOS.cercos, swarm: EVENTOS.enxames, elite: EVENTOS.subchefes }));
+    // chefes que ficaram para trás no pulo não aparecem
+    EVENTOS.chefes.forEach((c, i) => { if (c.t < t) scene.chefesFeitos[i] = true; });
+    scene.estadoOndas = novoEstadoOndas(t);
     scene.elapsed = t;
   };
   const D = 900, x = 70, y0 = H / 2 - 60;
@@ -39,6 +41,11 @@ function criarPainelTeste(scene) {
   makeButton(scene, x, y0 + 26, 110, 24, '+1 min', () => scene.testeIrPara(scene.elapsed + 60), opts);
   makeButton(scene, x, y0 + 56, 110, 24, '+5 min', () => scene.testeIrPara(scene.elapsed + 300), opts);
   makeButton(scene, x, y0 + 86, 110, 24, 'ir p/ 9:55', () => scene.testeIrPara(9 * 60 + 55), opts);
+  // pula para 5 s antes do próximo subchefe, chefe ou nave-mãe
+  makeButton(scene, x, y0 + 116, 110, 24, 'próx. evento', () => {
+    const p = proximoEvento(scene.elapsed + 5);
+    if (p) scene.testeIrPara(p.t - 5);
+  }, opts);
 }
 
 if (typeof module !== 'undefined') {

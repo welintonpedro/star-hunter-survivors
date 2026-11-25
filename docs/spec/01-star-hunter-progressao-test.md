@@ -101,7 +101,7 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | CT-65 | Minuto 10 em diante | Observar | Inimigos chegam em fluxo contínuo, no ritmo da tabela |
 | CT-66 | Nave parada com meteoro a 80 px e inimigos a 300 px | Esperar os tiros | O meteoro é atingido e quebra |
 | CT-67 | Titã (mísseis) com meteoro colado e inimigos longe | Esperar os mísseis | Os mísseis acertam o meteoro |
-| CT-68 | Automático ligado, modo teste | Pular para 9:55 e esperar até 10:05 | Chefe não aparece; aviso "desligue o AUTO"; subchefe dos 9:00 já apareceu |
+| CT-68 | Automático ligado, modo teste | Pular para 2:58 e depois para 9:58, esperando alguns segundos em cada | Subchefe dos 3:00 aparece mesmo no auto; chefe dos 10:00 não aparece e surge o aviso "desligue o AUTO" |
 | CT-69 | Automático ligado depois dos 10:00 | Desligar o automático | Chefe aparece |
 | CT-70 | Automático ligado aos 30:00 | Esperar | Nave-mãe não chega; vitória não conta até desligar o automático |
 

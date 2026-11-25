@@ -14,9 +14,14 @@ class GameScene extends Phaser.Scene {
     this.pendingLevels = 0; this.pendingChests = 0; this.modal = null;
     this.elapsed = 0; this.runCredits = 0; this.banked = 0; this.bonus = 0; this.kills = 0;
     this.auto = false; this.paused = false; this.ended = false;
-    this.bossSpawned = false; this.boss = null;
-    this.invuln = 0; this.spawnTimer = 0; this.bankTimer = 0;
+    this.boss = null;
+    this.invuln = 0; this.bankTimer = 0;
     this.ringCount = 0; this.swarmCount = 0; this.eliteCount = 0;
+    // ritmo da partida de 30 min (src/ritmo.js, src/dados/ondas.js, src/dados/eventos.js)
+    this.estadoOndas = novoEstadoOndas(0); this.ritmoParado = false;
+    this.chefesFeitos = EVENTOS.chefes.map(() => false);
+    this.naveMae = null; this.vitoriaRegistrada = false; this.primeiraVitoria = false;
+    this.menuPausa = null;
     this.sparkCount = 0; this.xpMult = 1; this.creditMult = 1;
     this.weapons = []; this.passives = {};
     this.orbs = []; this.orbAngle = 0; this.missiles = []; this.discs = [];
@@ -90,15 +95,18 @@ class GameScene extends Phaser.Scene {
       let x, y;
       do { x = 150 + Math.random() * (WORLD - 300); y = 150 + Math.random() * (WORLD - 300); }
       while (Math.hypot(x - c, y - c) < 250);
-      const crystal = Math.random() < 0.07;
-      const r = this.rocks.create(x, y, crystal ? 'crystal' : 'rock');
-      r.setDepth(3).setAngle(Math.random() * 360);
-      r.body.setCircle(20, r.width / 2 - 20, r.height / 2 - 20);
-      r.body.setImmovable(true);
-      r.isRock = true; r.crystal = crystal; r.hitR = 22;
-      r.hp = r.maxHp = 30 * this.gal.hpMult * (crystal ? 2 : 1);
-      r.flash = 0; r.orbHit = 0;
+      this.criarMeteoro(x, y, Math.random() < 0.07);
     }
+  }
+  criarMeteoro(x, y, crystal) {
+    const r = this.rocks.create(x, y, crystal ? 'crystal' : 'rock');
+    r.setDepth(3).setAngle(Math.random() * 360);
+    r.body.setCircle(20, r.width / 2 - 20, r.height / 2 - 20);
+    r.body.setImmovable(true);
+    r.isRock = true; r.crystal = crystal; r.hitR = 22;
+    r.hp = r.maxHp = 30 * this.gal.hpMult * (crystal ? 2 : 1);
+    r.flash = 0; r.orbHit = 0;
+    return r;
   }
 
   // ---------- ATRIBUTOS (armas + itens + melhorias permanentes) ----------
@@ -208,12 +216,18 @@ class GameScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-TWO', () => this.modalPick(1));
     this.input.keyboard.on('keydown-THREE', () => this.modalPick(2));
     this.input.keyboard.on('keydown-ENTER', () => this.modalPick(0));
+    this.input.keyboard.on('keydown-ESC', () => this.alternarPausa());
+    this.input.keyboard.on('keydown-P', () => this.alternarPausa());
+    // trocar de aba ou minimizar abre a pausa (RN-31, RN-33)
+    const aoEsconder = () => this.abrirPausa();
+    this.game.events.on('hidden', aoEsconder);
+    this.events.once('shutdown', () => this.game.events.off('hidden', aoEsconder));
 
     this.joy = { active: false, dx: 0, dy: 0, sx: 0, sy: 0 };
     this.joyBase = this.add.circle(0, 0, 50, 0xffffff, 0.08).setStrokeStyle(2, 0xffffff, 0.3).setScrollFactor(0).setDepth(140).setVisible(false);
     this.joyKnob = this.add.circle(0, 0, 22, 0xffffff, 0.25).setScrollFactor(0).setDepth(141).setVisible(false);
     this.input.on('pointerdown', (p, over) => {
-      if ((over && over.length) || this.paused || this.ended) return;
+      if ((over && over.length) || this.paused || this.ended || this.menuPausa) return;
       this.joy.active = true; this.joy.sx = p.x; this.joy.sy = p.y;
       this.joyBase.setPosition(p.x, p.y).setVisible(true);
       this.joyKnob.setPosition(p.x, p.y).setVisible(true);
@@ -232,8 +246,44 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // ---------- PAUSA (botão II, ESC, P ou trocar de aba) ----------
+  alternarPausa() {
+    if (this.menuPausa) this.fecharPausa(); else this.abrirPausa();
+  }
+  abrirPausa() {
+    if (this.ended || this.menuPausa) return;
+    this.physics.pause();
+    this.time.paused = true;
+    this.tweens.pauseAll();
+    this.joy.active = false; this.joyBase.setVisible(false); this.joyKnob.setVisible(false);
+    this.player.setVelocity(0, 0);
+    const D = 400;
+    const parts = [
+      this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setScrollFactor(0).setDepth(D).setInteractive(),
+      this.add.rectangle(W / 2, H / 2, 360, 200, 0x0f172a).setStrokeStyle(3, 0x60a5fa).setScrollFactor(0).setDepth(D + 1),
+      this.add.text(W / 2, H / 2 - 55, 'PAUSADO', {
+        fontFamily: 'Arial Black, Arial', fontSize: '30px', color: '#a5f3fc', stroke: '#000000', strokeThickness: 5
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2),
+      this.add.text(W / 2, H / 2 - 15, 'O relógio da partida está parado.\nESC ou P para continuar.', {
+        fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1', align: 'center'
+      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(D + 2)
+    ];
+    const btn = makeButton(this, W / 2, H / 2 + 60, 180, 38, 'CONTINUAR', () => this.fecharPausa(),
+      { fixed: true, depth: D + 3, color: 0x166534, stroke: 0x4ade80 });
+    parts.push(btn.bg, btn.txt);
+    this.menuPausa = { parts };
+  }
+  fecharPausa() {
+    if (!this.menuPausa) return;
+    this.menuPausa.parts.forEach((p) => p.destroy());
+    this.menuPausa = null;
+    this.time.paused = false;
+    this.tweens.resumeAll();
+    if (!this.modal && !this.ended) this.physics.resume();
+  }
+
   toggleAuto() {
-    if (this.ended) return;
+    if (this.ended || this.menuPausa) return;
     this.auto = !this.auto;
     this.autoBtn.setLabel(this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO');
     this.autoBtn.bg.setFillStyle(this.auto ? 0x166534 : 0x1e3a8a);
@@ -252,6 +302,7 @@ class GameScene extends Phaser.Scene {
     this.xpFill = this.add.rectangle(0, H - 10, W, 10, 0x22d3ee).setOrigin(0).setScrollFactor(0).setDepth(D + 1);
 
     this.autoBtn = makeButton(this, W - 90, 26, 160, 30, 'AUTO: DESLIGADO', () => this.toggleAuto(), { fixed: true, depth: D, size: 13 });
+    makeButton(this, W - 196, 26, 40, 30, 'II', () => this.alternarPausa(), { fixed: true, depth: D, size: 15 });
     makeButton(this, W - 90, 62, 160, 26, 'RECOLHER NAVE', () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
 
     this.bossBarBg = this.add.rectangle(W / 2, 54, 400, 14, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setVisible(false);
@@ -300,15 +351,25 @@ class GameScene extends Phaser.Scene {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
     this.hpText.setText(Math.ceil(Math.max(0, this.hp)) + ' / ' + Math.ceil(this.mods.maxHp));
     this.infoText.setText('Nível ' + this.level + '   Abates ' + this.kills + '   Créditos +' + fmt(this.runCredits) + (this.auto ? ' (auto 60%)' : ''));
-    this.timeText.setText(fmtTime(this.elapsed));
+    this.timeText.setText(fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
     this.xpFill.setScale(Math.min(1, this.xp / this.xpNext), 1);
+    if (this.boss && !this.boss.active) this.boss = this.chefeVivo();
     if (this.boss && this.boss.active) {
       this.bossBarBg.setVisible(true); this.bossBar.setVisible(true);
       this.bossBar.setScale(Math.max(0, this.boss.hp / this.boss.maxHp), 1);
     } else { this.bossBarBg.setVisible(false); this.bossBar.setVisible(false); }
-    if (!this.bossSpawned && this.elapsed >= BOSS_TIME && this.auto) this.hintText.setText('Chefe detectado! Desligue o AUTO para enfrentá-lo.');
-    else if (!this.bossSpawned) this.hintText.setText('Chefe em ' + fmtTime(Math.max(0, BOSS_TIME - this.elapsed)));
-    else this.hintText.setText('');
+    this.hintText.setText(this.textoDica());
+  }
+
+  // Linha de aviso no rodapé: o que vem a seguir, ou o que está esperando o AUTO desligar
+  textoDica() {
+    const chefeEsperando = EVENTOS.chefes.some((c, i) => !this.chefesFeitos[i] && this.elapsed >= c.t);
+    const maeEsperando = !this.naveMae && this.elapsed >= EVENTOS.naveMae;
+    if (this.auto && maeEsperando) return 'Nave-mãe detectada! Desligue o AUTO para enfrentá-la e vencer.';
+    if (this.auto && chefeEsperando) return 'Chefe detectado! Desligue o AUTO para enfrentá-lo.';
+    if (this.vitoriaRegistrada) return 'GALÁXIA CONQUISTADA! Resista à nave-mãe o quanto puder.';
+    const p = proximoEvento(this.elapsed);
+    return p ? p.nome + ' em ' + fmtTime(Math.max(0, p.t - this.elapsed)) : '';
   }
 
   drawMinimap() {
@@ -347,7 +408,7 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.far.tilePositionX = cam.scrollX * 0.2; this.far.tilePositionY = cam.scrollY * 0.2;
     this.near.tilePositionX = cam.scrollX * 0.5; this.near.tilePositionY = cam.scrollY * 0.5;
-    if (this.ended || this.paused) return;
+    if (this.ended || this.paused || this.menuPausa) return;
     const dt = Math.min(delta, 50) / 1000;
     this.elapsed += dt;
 
@@ -361,6 +422,7 @@ class GameScene extends Phaser.Scene {
     this.updateGems(dt);
     this.updatePickups();
     this.updatePOIs(dt);
+    this.updateNaveMae(dt);
 
     this.bullets.children.iterate((b) => { if (b && b.active) { b.life -= dt; if (b.life <= 0) b.disableBody(true, true); } });
     this.ebullets.children.iterate((b) => { if (b && b.active) { b.life -= dt; if (b.life <= 0) b.disableBody(true, true); } });
@@ -437,28 +499,40 @@ class GameScene extends Phaser.Scene {
 
   // ---------- NASCIMENTO DE INIMIGOS ----------
   updateSpawns(dt) {
-    this.spawnTimer -= dt;
-    if (this.spawnTimer <= 0) {
-      this.spawnTimer = Math.max(0.1, 0.5 - this.elapsed / 320);
-      this.spawnEnemy(this.pickType());
-      if (this.elapsed > 90) this.spawnEnemy(this.pickType());
-      if (this.elapsed > 180) this.spawnEnemy(this.pickType());
+    if (this.ritmoParado) return;
+    const t = this.elapsed;
+    // inimigos comuns: ondas no começo, fluxo depois (tabela em src/dados/ondas.js)
+    const n = passoNascimento(this.estadoOndas, t, dt, this.contarComuns(), ONDAS);
+    if (n > 0) {
+      const tipos = linhaDoMinuto(ONDAS, t).tipos;
+      for (let i = 0; i < n; i++) this.spawnEnemy(escolherTipo(tipos, Math.random()));
     }
-    if (Math.floor(this.elapsed / RING_EVERY) > this.ringCount) { this.ringCount++; this.spawnRing(); }
-    if (Math.floor(this.elapsed / SWARM_EVERY) > this.swarmCount) { this.swarmCount++; this.spawnSwarm(); }
-    if (Math.floor(this.elapsed / ELITE_EVERY) > this.eliteCount && this.elapsed < BOSS_TIME) {
+    if (quantosAte(t, EVENTOS.cercos) > this.ringCount) { this.ringCount++; this.spawnRing(); }
+    if (quantosAte(t, EVENTOS.enxames) > this.swarmCount) { this.swarmCount++; this.spawnSwarm(); }
+    // subchefes vêm no horário, mesmo com o AUTO ligado
+    if (quantosAte(t, EVENTOS.subchefes) > this.eliteCount) {
       this.eliteCount++;
       const p = this.spawnPoint();
       this.spawnElite(p.x, p.y);
     }
-    if (!this.bossSpawned && this.elapsed >= BOSS_TIME && !this.auto) this.spawnBoss();
+    // chefes e nave-mãe esperam o AUTO desligar (RN-47)
+    if (this.auto) return;
+    EVENTOS.chefes.forEach((c, i) => {
+      if (!this.chefesFeitos[i] && t >= c.t) { this.chefesFeitos[i] = true; this.spawnBoss(i); }
+    });
+    if (!this.naveMae && t >= EVENTOS.naveMae) this.chegarNaveMae();
   }
 
-  pickType() {
-    const r = Math.random();
-    if (this.elapsed > 60 && r < 0.15) return 'saucer';
-    if (this.elapsed > 20 && r < 0.45) return 'diamond';
-    return 'bug';
+  // inimigos comuns vivos (sem contar subchefes e chefes)
+  contarComuns() {
+    let n = 0;
+    this.enemies.children.iterate((e) => { if (e && e.active && !e.isBoss && !e.isElite) n++; });
+    return n;
+  }
+  chefeVivo() {
+    let c = null;
+    this.enemies.children.iterate((e) => { if (!c && e && e.active && e.isBoss) c = e; });
+    return c;
   }
 
   // ponto fora da tela; inimigos chegam de todos os lados (e mais pela frente)
@@ -484,8 +558,8 @@ class GameScene extends Phaser.Scene {
     e.enableBody(true, x, y, true, true);
     e.setDepth(5).clearTint();
     e.body.setCircle(t.radius, e.width / 2 - t.radius, e.height / 2 - t.radius);
-    const timeMult = 1 + this.elapsed / 90;
-    e.hp = e.maxHp = t.hp * this.gal.hpMult * timeMult;
+    const vidaMinuto = linhaDoMinuto(ONDAS, this.elapsed).vida;
+    e.hp = e.maxHp = t.hp * this.gal.hpMult * vidaMinuto;
     e.speedV = t.speed * this.gal.speedMult * (0.9 + Math.random() * 0.2);
     e.damage = t.damage * Math.sqrt(this.gal.hpMult);
     e.reward = t.reward; e.xpVal = t.xp; e.hitR = t.radius;
@@ -538,26 +612,64 @@ class GameScene extends Phaser.Scene {
     return this.spawnEnemy(tk, x, y);
   }
 
-  spawnBoss() {
-    this.bossSpawned = true;
+  // Chefe da galáxia número i (força em src/dados/eventos.js)
+  spawnBoss(i) {
+    const c = EVENTOS.chefes[i || 0];
     const p = this.spawnPoint();
     const key = 'boss_' + this.gi;
     let e = this.enemies.get(p.x, p.y, key);
     if (!e) { this.forceSpawn('bug', p.x, p.y); e = this.enemies.get(p.x, p.y, key); }
     if (!e) return;
-    e.setTexture(key).setScale(1);
+    e.setTexture(key).setScale(c.tamanho);
     e.enableBody(true, p.x, p.y, true, true);
     e.setDepth(6).clearTint();
     e.body.setCircle(50, e.width / 2 - 50, e.height / 2 - 50);
-    e.hp = e.maxHp = 1600 * this.gal.hpMult;
+    e.hp = e.maxHp = 1600 * this.gal.hpMult * c.vida;
     e.speedV = 60 * this.gal.speedMult;
-    e.damage = 30 * Math.sqrt(this.gal.hpMult);
-    e.reward = 0; e.xpVal = 20; e.hitR = 50;
-    e.isBoss = true; e.isElite = false; e.straight = null;
+    e.damage = 30 * Math.sqrt(this.gal.hpMult) * c.dano;
+    e.danoTiro = c.dano;
+    e.reward = 0; e.xpVal = 20; e.hitR = 50 * c.tamanho;
+    e.isBoss = true; e.isElite = false; e.straight = null; e.chefe = i || 0;
     e.flash = 0; e.orbHit = 0; e.kbT = 0; e.flank = 0; e.shootT = 2; e.burst = 0;
     this.boss = e;
     this.bossBar.setFillStyle(hexToInt(this.gal.alien.b));
-    this.banner('ALERTA: CHEFE DA GALÁXIA!', '#f87171');
+    this.banner('ALERTA: CHEFE DA GALÁXIA ' + ((i || 0) + 1) + '/' + EVENTOS.chefes.length + '!', '#f87171');
+  }
+
+  // Nave-mãe aos 30:00: registra a vitória e vem destruir o jogador (RN-01, RN-02)
+  chegarNaveMae() {
+    this.vitoriaRegistrada = true;
+    this.primeiraVitoria = !SAVE.cleared[this.gi];
+    SAVE.cleared[this.gi] = true;
+    const bonus = 500 * this.gal.rewardMult;
+    this.bonus += bonus; this.runCredits += bonus;
+    writeSave(SAVE);
+    const p = this.spawnPoint();
+    const m = this.physics.add.sprite(p.x, p.y, 'boss_' + this.gi).setScale(3.2).setDepth(9).setTint(0x7f1d1d);
+    m.body.setCircle(50, m.width / 2 - 50, m.height / 2 - 50);
+    m.tiroT = 1.2;
+    this.naveMae = m;
+    this.physics.add.overlap(this.player, m, () => { this.invuln = 0; this.hurt(99999); });
+    this.cameras.main.flash(500, 255, 255, 255);
+    this.cameras.main.shake(600, 0.01);
+    this.banner('A NAVE-MÃE CHEGOU! GALÁXIA CONQUISTADA!', '#86efac');
+    this.time.delayedCall(EVENTOS.naveMaeDuracao * 1000, () => this.endRun('victory', this.primeiraVitoria));
+  }
+  updateNaveMae(dt) {
+    const m = this.naveMae;
+    if (!m || !m.active) return;
+    const a = Phaser.Math.Angle.Between(m.x, m.y, this.player.x, this.player.y);
+    const v = Math.max(300, this.mods.speed * 1.3);
+    m.setVelocity(Math.cos(a) * v, Math.sin(a) * v);
+    m.rotation += dt * 0.4;
+    m.tiroT -= dt;
+    if (m.tiroT <= 0) {
+      m.tiroT = 0.8;
+      for (let i = 0; i < 24; i++) {
+        const b = this.enemyShot(m.x, m.y, i / 24 * Math.PI * 2 + Math.random() * 0.2, 320);
+        if (b) b.dmg *= 6;
+      }
+    }
   }
 
   // ---------- MOVIMENTO DOS INIMIGOS (com separação: nada de fila indiana) ----------
@@ -622,10 +734,11 @@ class GameScene extends Phaser.Scene {
       e.shootT = 2.0;
       e.burst++;
       const n = 18, off = (e.burst % 2) * (Math.PI / n);
-      for (let i = 0; i < n; i++) this.enemyShot(e.x, e.y, i / n * Math.PI * 2 + off, 190);
+      const forte = (b) => { if (b) b.dmg *= e.danoTiro || 1; };
+      for (let i = 0; i < n; i++) forte(this.enemyShot(e.x, e.y, i / n * Math.PI * 2 + off, 190));
       if (e.burst % 3 === 0) {
         const base = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
-        [-0.2, 0, 0.2].forEach((o) => this.enemyShot(e.x, e.y, base + o, 280));
+        [-0.2, 0, 0.2].forEach((o) => forte(this.enemyShot(e.x, e.y, base + o, 280)));
       }
       if (e.burst % 4 === 0) for (let i = 0; i < 6; i++) this.spawnEnemy('diamond', e.x + (Math.random() - 0.5) * 80, e.y + (Math.random() - 0.5) * 80);
     }
@@ -639,6 +752,7 @@ class GameScene extends Phaser.Scene {
     b.body.setCircle(5, 1, 1);
     b.setVelocity(Math.cos(a) * spd, Math.sin(a) * spd);
     b.life = 4; b.dmg = 12 * Math.sqrt(this.gal.hpMult);
+    return b;
   }
 
   updateRocks(dt) {
@@ -658,17 +772,29 @@ class GameScene extends Phaser.Scene {
     });
     return best;
   }
-  nearestTarget(range) {
-    const e = this.nearestEnemy(range);
-    if (e) return e;
-    let best = null, bd = 340 * 340;
-    const px = this.player.x, py = this.player.y;
+  // Meteoro mais perto de (x, y) dentro do alcance
+  nearestRock(range, x, y) {
+    let best = null, bd = range * range;
     this.rocks.children.iterate((r) => {
       if (!r || !r.active) return;
-      const d2 = (r.x - px) * (r.x - px) + (r.y - py) * (r.y - py);
+      const d2 = (r.x - x) * (r.x - x) + (r.y - y) * (r.y - y);
       if (d2 < bd) { bd = d2; best = r; }
     });
     return best;
+  }
+  // Alvo para as armas: o inimigo mais perto, mas um meteoro colado na nave (até METEORO_PERTO)
+  // conta como inimigo. Meteoros mais longe só quando não há inimigo no alcance (RN-46).
+  nearestTarget(range, x, y) {
+    x = x === undefined ? this.player.x : x; y = y === undefined ? this.player.y : y;
+    const e = this.nearestEnemy(range, x, y);
+    const colado = this.nearestRock(METEORO_PERTO, this.player.x, this.player.y);
+    if (colado) {
+      if (!e) return colado;
+      const dr = Math.hypot(colado.x - x, colado.y - y), de = Math.hypot(e.x - x, e.y - y);
+      return dr <= de ? colado : e;
+    }
+    if (e) return e;
+    return this.nearestRock(Math.min(range, 340), this.player.x, this.player.y);
   }
   forEachTarget(cb) {
     this.enemies.children.iterate((e) => { if (e && e.active) cb(e); });
@@ -701,7 +827,7 @@ class GameScene extends Phaser.Scene {
     e.isElite = false;
     e.disableBody(true, true);
     if (wasElite) this.dropPickup(e.x, e.y, 'chest');
-    if (wasBoss) this.onBossDefeated();
+    if (wasBoss) this.onBossDefeated(e);
   }
 
   breakRock(r) {
@@ -777,7 +903,7 @@ class GameScene extends Phaser.Scene {
   }
 
   fireMissiles(s) {
-    if (!this.nearestEnemy(700)) return false;
+    if (!this.nearestTarget(700)) return false;
     for (let i = 0; i < s.amount; i++) {
       const a = Math.random() * Math.PI * 2;
       const m = this.add.image(this.player.x, this.player.y, 'missile').setDepth(8).setScale(s.radius > 80 ? 1.5 : 1.2);
@@ -790,7 +916,7 @@ class GameScene extends Phaser.Scene {
     for (let i = this.missiles.length - 1; i >= 0; i--) {
       const m = this.missiles[i];
       m.life -= dt;
-      if (!m.target || !m.target.active) m.target = this.nearestEnemy(800, m.x, m.y);
+      if (!m.target || !m.target.active) m.target = this.nearestTarget(800, m.x, m.y);
       if (m.target) {
         const want = Math.atan2(m.target.y - m.y, m.target.x - m.x);
         let diff = Phaser.Math.Angle.Wrap(want - m.ang);
@@ -819,8 +945,8 @@ class GameScene extends Phaser.Scene {
 
   fireShock(s) {
     const px = this.player.x, py = this.player.y;
-    const near = this.nearestEnemy(s.radius * 1.2);
-    if (!near) return false;
+    const near = this.nearestTarget(s.radius * 1.2);
+    if (!near || Math.hypot(near.x - px, near.y - py) > s.radius * 1.2 + (near.hitR || 14)) return false;
     const ring = this.add.circle(px, py, 10, 0xa78bfa, 0.18).setStrokeStyle(3, 0xc4b5fd, 0.9).setDepth(9);
     this.tweens.add({ targets: ring, radius: s.radius, alpha: 0, duration: 300, onComplete: () => ring.destroy() });
     let healed = 0;
@@ -840,6 +966,7 @@ class GameScene extends Phaser.Scene {
     const px = this.player.x, py = this.player.y;
     const pool = [];
     this.enemies.children.iterate((e) => { if (e && e.active && Math.hypot(e.x - px, e.y - py) < 560) pool.push(e); });
+    this.rocks.children.iterate((r) => { if (r && r.active && Math.hypot(r.x - px, r.y - py) < METEORO_PERTO) pool.push(r); });
     if (!pool.length) return false;
     const g = this.add.graphics().setDepth(12);
     g.lineStyle(3, 0x67e8f9, 1);
@@ -1113,7 +1240,7 @@ class GameScene extends Phaser.Scene {
     this.openNextModal();
   }
   modalPick(i) {
-    if (!this.modal) return;
+    if (!this.modal || this.menuPausa) return;
     if (this.modal.kind === 'level') {
       const o = this.modal.options[i];
       if (!o) return;
@@ -1218,23 +1345,25 @@ class GameScene extends Phaser.Scene {
     if (this.hp <= 0) {
       this.boom(this.player.x, this.player.y, 30, 0xf97316);
       this.player.setVisible(false);
-      this.endRun('dead');
+      this.endRun(this.vitoriaRegistrada ? 'victory' : 'dead', this.primeiraVitoria);
     }
   }
 
   // ---------- FIM DA PARTIDA ----------
-  onBossDefeated() {
-    this.boss = null;
-    const first = !SAVE.cleared[this.gi];
-    SAVE.cleared[this.gi] = true;
-    this.bonus = 500 * this.gal.rewardMult;
-    this.runCredits += this.bonus;
-    this.cameras.main.flash(400, 255, 255, 255);
-    this.time.delayedCall(900, () => this.endRun('victory', first));
+  // Chefe derrotado: solta um baú e créditos; não libera nave nem galáxia (RN-04)
+  onBossDefeated(e) {
+    const c = EVENTOS.chefes[e.chefe || 0];
+    this.dropPickup(e.x, e.y, 'chest');
+    const bonus = c.creditos * this.gal.rewardMult;
+    this.bonus += bonus; this.runCredits += bonus;
+    this.cameras.main.flash(300, 255, 255, 255);
+    this.banner('CHEFE DERROTADO! +' + fmt(bonus) + ' créditos', '#86efac');
+    this.boss = this.chefeVivo();
   }
 
   endRun(reason, firstClear) {
     if (this.ended) return;
+    if (this.menuPausa) this.fecharPausa();
     this.ended = true;
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }

@@ -53,7 +53,7 @@ class HangarScene extends Phaser.Scene {
       if (owned) {
         btn = makeButton(this, x, y + 96, 170, 34, 'JOGAR', () => this.scene.start('Game', { ship: i }), { color: 0x166534, stroke: 0x4ade80, size: 16 });
       } else if (!prevCleared) {
-        btn = makeButton(this, x, y + 96, 190, 34, 'Vença o chefe de\n' + GALAXIES[s.galaxy - 1].name, () => {}, { disabled: true, size: 11 });
+        btn = makeButton(this, x, y + 96, 190, 34, 'Sobreviva 30 min em\n' + GALAXIES[s.galaxy - 1].name, () => {}, { disabled: true, size: 11 });
       } else {
         const can = SAVE.credits >= s.cost;
         btn = makeButton(this, x, y + 96, 170, 34, 'COMPRAR  ' + fmt(s.cost), () => {
