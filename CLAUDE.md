@@ -3,7 +3,11 @@ Jogo de navinha estilo Vampire Survivors + idle, para navegador.
 Um jogador só, sem login; tudo salvo no aparelho.
 
 Rodar: npx serve . e abrir http://localhost:3000
-Testes: definidos na entrega E1 (docs/spec/01-star-hunter-progressao-test.md)
+Testes: npm install (uma vez) e npm test. Os de navegador usam o Chrome
+  em /usr/bin/google-chrome (ou CHROME_PATH) e o Phaser de node_modules.
+Arquivos em src/ são scripts comuns carregados em ordem pelo index.html;
+  um arquivo novo precisa de uma linha lá, na posição certa.
+Modo de teste: abra o jogo com ?teste=1 para pular o relógio.
 Specs ficam em docs/spec/, numerados.
 Os testes definem o que é "pronto": se um teste parecer
 errado, pergunte antes de alterá-lo, porque mudar o

@@ -10,7 +10,6 @@
 
 const W = 960, H = 540;
 const WORLD = 6000;              // tamanho do mapa de cada galáxia
-const SAVE_KEY = 'star_hunter_survivors_save_v1';
 const BOSS_TIME = 240;           // chefe aos 4 minutos
 const ELITE_EVERY = 60;          // subchefe a cada minuto
 const SWARM_EVERY = 50;          // enxame atravessando a tela

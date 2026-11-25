@@ -11,6 +11,17 @@ class HangarScene extends Phaser.Scene {
     const off = this.registry.get('offline');
     if (off && off.credits > 0) { this.registry.set('offline', null); this.showOffline(off); }
     this.time.addEvent({ delay: 10000, loop: true, callback: () => writeSave(SAVE) });
+    this.showSaveWarning();
+  }
+  // Aviso sobre o save (sem localStorage ou save corrompido), só na primeira vez
+  showSaveWarning() {
+    if (!AVISO_SAVE.texto || AVISO_SAVE.mostrado) return;
+    AVISO_SAVE.mostrado = true;
+    const bg = this.add.rectangle(W / 2, H - 15, W - 40, 24, 0x7f1d1d, 0.92).setStrokeStyle(2, 0xfca5a5).setDepth(50);
+    const txt = this.add.text(W / 2, H - 15, AVISO_SAVE.texto, {
+      fontFamily: 'Arial', fontSize: '14px', color: '#fee2e2'
+    }).setOrigin(0.5).setDepth(51);
+    this.time.delayedCall(9000, () => { bg.destroy(); txt.destroy(); });
   }
   update(t, dt) { this.stars.tilePositionY -= dt * 0.01; }
   keep(o) { this.items.push(o); return o; }

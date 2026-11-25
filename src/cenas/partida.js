@@ -56,6 +56,7 @@ class GameScene extends Phaser.Scene {
 
     this.setupInput();
     this.createHUD();
+    if (MODO_TESTE) criarPainelTeste(this);
     this.banner(this.gal.name, '#' + this.gal.starTint.toString(16).padStart(6, '0'));
   }
 
