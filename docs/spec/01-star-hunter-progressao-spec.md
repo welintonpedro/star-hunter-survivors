@@ -1,0 +1,203 @@
+# 01 — Star Hunter Survivors: progressão, mapa, poderes, códex e conquistas — SPEC
+
+Marcação: **[DECIDIDO]** = você decidiu. **[SUPOSIÇÃO]** = recomendação, ainda sem confirmação.
+Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [SUPOSIÇÃO] até você confirmar.
+
+---
+
+## 1. Objetivo
+
+- **Dono da dor:** você (criador do jogo) e os futuros jogadores. [DECIDIDO]
+- **Problema:** a partida da v0.2 dura ~4 min, a progressão é rasa, as cartas exigem leitura, os combos vêm de bandeja, o mapa tem borda visível e falta motivo para voltar a jogar. [DECIDIDO]
+- **Meta desta versão (v0.3):** partida de 30 min com curva de dificuldade, mapa que dá a volta, 30 inimigos únicos, poder exclusivo por nave, cartas por ícone, combos descobertos pelo jogador, códex na pausa e conquistas que liberam conteúdo.
+
+---
+
+## 2. Regras de negócio
+
+### 2.1 Duração, chefes e vitória
+- **RN-01** A partida dura 30 min. Aos 30:00 chega a nave-mãe alienígena, que mata o jogador muito rápido. [DECIDIDO]
+- **RN-02** Sobreviver até 30:00 é a vitória: conquista a galáxia e libera a próxima galáxia e a próxima nave. [DECIDIDO]
+  - A vitória é registrada no instante 30:00, mesmo que a nave-mãe mate o jogador logo depois. [SUPOSIÇÃO]
+  - A nave liberada fica disponível para compra com créditos no hangar, como hoje. [SUPOSIÇÃO]
+- **RN-03** Chefes de galáxia aos 10:00, 20:00 e 25:00, cada um mais forte que o anterior. [DECIDIDO]
+- **RN-04** Os chefes não liberam nave nem galáxia: só dão recompensas. [DECIDIDO]
+  - A recompensa de cada chefe é um baú. [SUPOSIÇÃO]
+- **RN-05** Subchefes em horários fixos a cada 3 min (3:00, 6:00 … 27:00). Cada um solta um baú. [DECIDIDO]
+  - Não há subchefe aos 30:00, porque é a hora da nave-mãe. [SUPOSIÇÃO]
+
+### 2.2 Curva de dificuldade
+- **RN-06** A partida começa com poucos inimigos e aumenta aos poucos, sem ficar fácil demais. [DECIDIDO]
+- **RN-07** A curva fica numa tabela por minuto (quantidade, ritmo e tipos), separada da lógica. [SUPOSIÇÃO]
+- **RN-08** Alvo de equilíbrio: quem escolhe bem as cartas chega aos 30 min com esforço; quem não melhora a nave morre entre 10 e 15 min. [SUPOSIÇÃO]
+
+### 2.3 Inimigos
+- **RN-09** 10 inimigos totalmente diferentes por galáxia (visual e comportamento próprios), 30 no total. [DECIDIDO]
+- **RN-10** Cada galáxia apresenta um inimigo novo a cada ~3 min. [SUPOSIÇÃO]
+- **RN-11** Comportamentos distribuídos sem repetir entre galáxias (perseguidor, rápido, tanque, atirador, kamikaze, divisor, escudo frontal, teleporte, orbitador, invocador, minador, laser que carrega, enxame, ladrão de gemas, curador de aliados e outros até 30). [SUPOSIÇÃO]
+- **RN-12** Limite de ~250 inimigos na tela. Se o jogo ficar lento, os efeitos visuais diminuem antes da jogabilidade. [SUPOSIÇÃO]
+
+### 2.4 Mapa
+- **RN-13** O mapa parece infinito, mas tem tamanho fixo. [DECIDIDO]
+- **RN-14** Tamanho ~8 vezes a área atual, cerca de 17.000×17.000. [DECIDIDO]
+- **RN-15** Sem borda: quem sai por um lado reaparece do outro sem perceber. [DECIDIDO]
+- **RN-16** ~30 locais únicos por galáxia: os tipos atuais (planeta, estação, ninho, buraco negro, relíquia) com variações, mais 2 ou 3 tipos novos. [SUPOSIÇÃO]
+- **RN-17** O minimapa mostra só o que já foi descoberto. [DECIDIDO na v0.2]
+- **RN-18** Inimigos, tiros, gemas, locais e minimapa funcionam certo na emenda do mapa. [SUPOSIÇÃO]
+
+### 2.5 Poder exclusivo de cada nave
+- **RN-19** Cada nave começa com um poder só dela, que nunca aparece nas cartas de outra nave. [DECIDIDO]
+- **RN-20** O poder sobe de nível pelas cartas ("melhorar o poder da nave" pode vir entre as 3 opções). [DECIDIDO]
+- **RN-21** O poder também tem um combo secreto, descoberto pelo jogador. [DECIDIDO]
+- **RN-22** O poder ocupa o 1º espaço de arma (fixo) e vai até o nível 5. No nível 5, com um item passivo específico da nave, o próximo baú evolui o poder. [SUPOSIÇÃO]
+  - O item passivo específico é um dos itens passivos que já existem, não um item novo. [SUPOSIÇÃO]
+- **RN-23** Poderes: Falcão = Rajada Falcão (leque que ricocheteia); Titã = Martelo Gravitacional (onda que esmaga e atordoa); Agulha = Enxame de Agulhas (dardos teleguiados rápidos). [SUPOSIÇÃO]
+
+### 2.6 Cartas
+- **RN-24** Cada carta tem um desenho grande (ícone em pixel art) do poder. [DECIDIDO]
+- **RN-25** Texto mínimo (nome e efeito curto) e nenhuma dica de combo. [DECIDIDO]
+- **RN-26** Cada poder tem um ícone próprio, o mesmo na carta, no painel, na pausa e no códex. [SUPOSIÇÃO]
+
+### 2.7 Combos descobertos
+- **RN-27** O jogador descobre os combos sozinho; ao fazer um, desbloqueia aquele conhecimento. [DECIDIDO]
+- **RN-28** O conhecimento fica salvo para sempre, entre partidas e para todas as naves. [DECIDIDO]
+- **RN-29** Painel no canto do mapa mostra os ícones dos poderes escolhidos; quando um combo acontece, aparece a linha `[ícone A] + [ícone B] = [ícone C]`. [DECIDIDO]
+
+### 2.8 Pausa e códex
+- **RN-30** A pausa mostra todos os poderes que podem aparecer, os combos descobertos (com ícones) e os não descobertos como `[?] + [?] = [?]`. [DECIDIDO]
+- **RN-31** A pausa abre por botão na tela, tecla ESC ou P, e automaticamente ao trocar de aba. [SUPOSIÇÃO]
+- **RN-32** Na pausa dá para ligar/desligar o automático e recolher a nave. [SUPOSIÇÃO]
+- **RN-33** Ao trocar de aba, o jogo pausa e não conta tempo de partida nem rendimento do automático. [SUPOSIÇÃO]
+
+### 2.9 Conquistas
+- **RN-34** O jogo tem conquistas, e elas liberam coisas de jogo (não só créditos ou cores). [DECIDIDO]
+- **RN-35** Armas travadas não aparecem nas cartas: só podem ser achadas em baús de subchefe ou em locais únicos. Achar a mesma arma 3 vezes libera ela nas cartas para sempre. [DECIDIDO]
+  - Das 6 armas comuns, 2 começam travadas (ex.: Disco Serra). [SUPOSIÇÃO]
+- **RN-36** Bônus permanentes pequenos (ex.: +5% de dano, +1 de vida regenerada). [SUPOSIÇÃO]
+- **RN-37** ~20 conquistas iniciais, com tela própria no hangar. [SUPOSIÇÃO]
+- **RN-38** Exemplos: sobreviver 10/20/30 min; 1º combo e todos os combos; 1.000 e 10.000 abates; todos os locais de uma galáxia; 5 min sem dano; cada galáxia com cada nave. [SUPOSIÇÃO]
+- **RN-39** Ao desbloquear, aparece um aviso pequeno no canto, sem pausar o jogo. [SUPOSIÇÃO]
+
+### 2.10 O que continua igual
+- **RN-40** Modo automático (rende 60%), progresso offline, hangar com melhorias permanentes, 3 naves e 3 galáxias. [SUPOSIÇÃO]
+
+### 2.11 Base técnica e dados
+- **RN-41** O projeto passa a viver no GitHub e é trabalhado com o Claude Code. [DECIDIDO]
+  - O código é dividido em arquivos (cenas, armas, inimigos, mapa, conquistas, tabelas de equilíbrio), e uma versão de teste é publicada no GitHub Pages para abrir no celular. [SUPOSIÇÃO]
+  - O Game Creator AI deixa de ser o lugar principal deste jogo. [SUPOSIÇÃO]
+- **RN-42** O save da v0.2 é convertido sem perder créditos, naves nem melhorias. [SUPOSIÇÃO]
+- **RN-43** Se o navegador não tiver localStorage, o jogo roda sem salvar e avisa uma vez. [SUPOSIÇÃO]
+- **RN-44** Jogo de um jogador só, sem login; tudo fica no aparelho. [SUPOSIÇÃO]
+- **RN-45** Existe um modo de teste (ex.: link com `?teste=1`) que permite avançar o relógio da partida, para testar eventos dos 10, 20 e 30 min sem jogar meia hora. Ele não aparece para o jogador comum. [SUPOSIÇÃO — lacuna preenchida por mim]
+
+---
+
+## 3. Telas, dados e fluxos
+
+### 3.1 Telas
+| Tela | O que mostra |
+|---|---|
+| **Hangar** | Naves (cada card mostra o poder exclusivo com ícone), galáxias, melhorias, créditos, botões novos **Conquistas** e **Códex**. |
+| **Partida** | Nave, inimigos, mapa que dá a volta, minimapa (só o descoberto), relógio até 30:00, painel de poderes e combos no canto, botão de pausa, avisos de conquista no canto. |
+| **Subir de nível** | 3 cartas com ícone grande, nome e efeito curto. Sem dica de combo. |
+| **Pausa / códex** | Poderes possíveis, combos descobertos e ocultos, botão do automático, botão de recolher a nave, botão de continuar. |
+| **Conquistas (hangar)** | Lista de ~20 conquistas: bloqueadas e desbloqueadas, com o que cada uma libera. |
+| **Fim de partida** | Vitória (sobreviveu até 30:00 → galáxia conquistada, nave/galáxia liberada) ou derrota (tempo sobrevivido, abates, créditos). |
+
+### 3.2 Dados salvos no navegador
+- Tudo o que já é salvo hoje (créditos, naves, melhorias, progresso offline).
+- Combos descobertos.
+- Conquistas desbloqueadas e contadores (ex.: quantas vezes cada arma travada foi achada).
+- Armas liberadas nas cartas.
+- Estatísticas: abates, tempo total, melhor tempo por galáxia e por nave, locais descobertos por galáxia.
+- Galáxias conquistadas e por qual nave.
+- Número de versão do save, para converter saves antigos.
+
+### 3.3 Tabelas de ajuste (arquivos separados da lógica)
+- Curva de ondas por minuto, por galáxia.
+- Os 30 inimigos (vida, velocidade, dano, comportamento, minuto de entrada).
+- Chefes, subchefes e nave-mãe (horário, força, recompensa).
+- Conquistas (condição e o que liberam).
+
+### 3.4 Fluxo principal
+1. Hangar → escolhe nave e galáxia → inicia partida.
+2. Nave começa só com o poder exclusivo no 1º espaço.
+3. Mata inimigos → junta gemas → sobe de nível → escolhe 1 entre 3 cartas.
+4. A cada 3 min, subchefe → baú. Aos 10, 20 e 25 min, chefe → baú.
+5. Baú pode evoluir arma/poder (se a condição estiver cumprida) ou entregar arma travada (contador +1).
+6. Ao fazer um combo pela primeira vez → linha `A + B = C` no painel → combo fica salvo para sempre.
+7. Ao cumprir uma conquista → aviso no canto → recompensa liberada.
+8. Aos 30:00 → nave-mãe → vitória registrada → tela de vitória → próxima galáxia e nave liberadas.
+9. Se morrer antes → tela de derrota → volta ao hangar.
+
+---
+
+## 4. Fora do escopo
+- Sons e música.
+- Números de dano saltando dos inimigos.
+- Login e save na nuvem.
+- Multiplayer.
+- Lançamento na Steam ou no celular.
+- Novas galáxias além das 3.
+- Novas armas comuns além das 6 atuais (exceto os 3 poderes exclusivos).
+- Loja com dinheiro real.
+
+---
+
+## 5. Entregas
+
+Cada entrega deixa o jogo jogável e testável sozinha.
+
+### E1 — Mudança para o GitHub, sem mudar o jogo
+- Leva a v0.2 para o repositório, dividida em arquivos; publica a versão de teste no GitHub Pages.
+- Adiciona número de versão ao save, conversão do save v0.2 e aviso quando não há localStorage.
+- Adiciona o modo de teste (avançar relógio).
+- **Cobre:** RN-41, RN-42, RN-43, RN-44, RN-45, RN-40.
+- **Valor sozinha:** o mesmo jogo de hoje, guardado com histórico e jogável pelo celular via link.
+
+### E2 — Partida de 30 minutos
+- Relógio até 30:00; subchefes a cada 3 min com baú; chefes aos 10, 20 e 25 com baú; nave-mãe aos 30:00; vitória libera próxima galáxia e nave.
+- Curva de ondas em tabela por minuto (ainda com os 3 inimigos atuais).
+- Pausa básica (botão, ESC/P, troca de aba) que congela o tempo.
+- **Cobre:** RN-01 a RN-08, RN-31, RN-33.
+- **Valor sozinha:** acaba a dor principal (partida curta demais).
+
+### E3 — Mapa que dá a volta
+- Mapa ~17.000×17.000 sem borda; tudo funciona na emenda; ~30 locais por galáxia; minimapa adaptado.
+- **Cobre:** RN-13 a RN-18.
+- **Valor sozinha:** acaba a borda visível e dá o que explorar nos 30 min.
+
+### E4 — Inimigos da galáxia 1 (10 únicos)
+- 10 inimigos novos da galáxia 1, entrando a cada ~3 min pela tabela; limite de 250 na tela com redução de efeitos.
+- **Cobre:** RN-09 (parcial), RN-10, RN-11 (parcial), RN-12.
+- **Valor sozinha:** a galáxia 1 inteira já tem variedade real.
+
+### E5 — Inimigos das galáxias 2 e 3 (20 únicos)
+- Mais 20 inimigos, sem repetir comportamento entre galáxias.
+- **Cobre:** RN-09 (completo), RN-11 (completo).
+
+### E6 — Poder exclusivo de cada nave
+- 3 poderes no 1º espaço, níveis 1 a 5 pelas cartas, evolução com passivo + baú; card da nave no hangar mostra o poder.
+- **Cobre:** RN-19, RN-20, RN-22, RN-23.
+
+### E7 — Cartas por ícone e painel no canto
+- Ícone pixel art para cada poder/arma/item; cartas com ícone grande, nome e efeito curto, sem dica de combo; painel no canto com os ícones escolhidos.
+- **Cobre:** RN-24, RN-25, RN-26, RN-29 (parte dos ícones).
+
+### E8 — Combos descobertos e códex
+- Combos salvos para sempre ao serem feitos; linha `A + B = C` no painel; combo secreto do poder da nave; códex na pausa (descobertos e ocultos) e no hangar; automático e recolher nave na pausa.
+- **Cobre:** RN-21, RN-27, RN-28, RN-29, RN-30, RN-32.
+
+### E9 — Conquistas
+- ~20 conquistas em tabela; tela no hangar; aviso no canto sem pausar; armas travadas achadas em baús/locais e liberadas após 3 achados; bônus permanentes; estatísticas salvas.
+- **Cobre:** RN-34 a RN-39.
+
+---
+
+## 6. Métrica de sucesso
+- **Antes (v0.2):** a partida acaba em ~4 min (chefe aos 4:00). Não há conquistas nem combos a descobrir.
+- **Depois:** [SUPOSIÇÃO]
+  - em 3 partidas de teste por galáxia, jogando direito, a duração mediana fica entre 15 e 30 min, e pelo menos 1 em 3 chega aos 30:00;
+  - o jogo fica fluido (acima de ~50 quadros por segundo) no seu computador, com a tela cheia de inimigos;
+  - você escolhe as cartas olhando só o desenho depois de 2 ou 3 partidas.
+- **Quando medir:** logo após cada entrega, no navegador do computador e pelo link de teste no celular. A medição de duração completa só faz sentido a partir da E4 (com inimigos novos) e de novo ao final da E9.

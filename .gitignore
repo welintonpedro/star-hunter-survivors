@@ -1,0 +1,12 @@
+# Senhas e chaves: nunca vão para o GitHub
+.env
+.env.*
+
+# Pastas geradas automaticamente
+node_modules/
+test-results/
+playwright-report/
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
