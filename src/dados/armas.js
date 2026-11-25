@@ -1,6 +1,30 @@
 // ============ ARMAS ============
 // stats(l) = atributos no nível l (1 a 5). evo = item passivo que faz o COMBO.
+// poder = id da nave dona: o poder exclusivo só aparece para ela (RN-19 a RN-23).
 const WEAPONS = {
+  // ----- poderes exclusivos das naves (começam no 1º espaço) -----
+  rajada: {
+    name: 'Rajada Falcão', abbr: 'RF', color: 0x60a5fa, hidden: false, poder: 'falcao',
+    evo: 'engine', evoName: 'Rajada Fênix',
+    desc: ['Leque de tiros que ricocheteiam', '+1 tiro', '+40% dano', '+1 ricochete', '+2 tiros e -20% recarga'],
+    stats: (l) => ({ cd: 0.9 * (l >= 5 ? 0.8 : 1), dmg: 9 * (l >= 3 ? 1.4 : 1), amount: 3 + (l >= 2 ? 1 : 0) + (l >= 5 ? 2 : 0), ricochete: 1 + (l >= 4 ? 1 : 0) }),
+    evolve: (s) => { s.ricochete += 2; s.dmg *= 1.5; s.amount += 2; }
+  },
+  martelo: {
+    name: 'Martelo Gravitacional', abbr: 'MG', color: 0xf59e0b, hidden: false, poder: 'tita',
+    evo: 'armor', evoName: 'Colapso Gravitacional',
+    desc: ['Onda que esmaga e atordoa', '+25% raio', '+40% dano', '+0,4 s atordoando', '+20% raio e -25% recarga'],
+    stats: (l) => ({ cd: 2.4 * (l >= 5 ? 0.75 : 1), dmg: 20 * (l >= 3 ? 1.4 : 1), radius: 150 * (l >= 2 ? 1.25 : 1) * (l >= 5 ? 1.2 : 1), atordoa: 0.6 + (l >= 4 ? 0.4 : 0) }),
+    evolve: (s) => { s.dmg *= 2; s.radius *= 1.3; s.puxa = true; }
+  },
+  agulhas: {
+    name: 'Enxame de Agulhas', abbr: 'EA', color: 0xf0abfc, hidden: false, poder: 'agulha',
+    evo: 'regen', evoName: 'Tempestade de Agulhas',
+    desc: ['Dardos rápidos, um para cada inimigo', '+2 dardos', '+40% dano', '+2 dardos', '+2 dardos e -25% recarga'],
+    stats: (l) => ({ cd: 1.1 * (l >= 5 ? 0.75 : 1), dmg: 7 * (l >= 3 ? 1.4 : 1), amount: 3 + (l >= 2 ? 2 : 0) + (l >= 4 ? 2 : 0) + (l >= 5 ? 2 : 0), pierce: 0 }),
+    evolve: (s) => { s.amount += 4; s.pierce += 2; s.dmg *= 1.4; }
+  },
+  // ----- armas comuns (aparecem nas cartas de todas as naves) -----
   pulsar: {
     name: 'Canhão Pulsar', abbr: 'CP', color: 0xfde047, hidden: false,
     evo: 'multi', evoName: 'Tempestade Estelar',

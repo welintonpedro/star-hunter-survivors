@@ -48,9 +48,11 @@ test('CT-66: meteoro colado na nave é atacado mesmo com inimigo por perto (Falc
   } finally { await fechar(); }
 });
 
-test('CT-67: os mísseis do Titã atacam meteoro colado quando não há inimigo perto', async () => {
+test('CT-67: os mísseis atacam meteoro colado quando não há inimigo perto', async () => {
   const { pagina, erros, fechar } = await partida(1);
   try {
+    // desde a E6 o Titã começa com o Martelo; aqui ele fica só com os Mísseis Teleguiados
+    await G(pagina, () => { const g = game.scene.getScene('Game'); g.weapons = []; g.addWeapon('missiles'); });
     await cenaDoMeteoro(pagina, 1100);
     await esperarRelogio(pagina, (await G(pagina, () => game.scene.getScene('Game').elapsed)) + 5);
     const dano = await G(pagina, () => window.__meteoro.maxHp - window.__meteoro.hp);

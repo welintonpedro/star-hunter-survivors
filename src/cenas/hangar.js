@@ -43,7 +43,7 @@ class HangarScene extends Phaser.Scene {
       this.keep(this.add.text(x, y - 6, gal.name + (SAVE.cleared[s.galaxy] ? '  (conquistada)' : ''), {
         fontFamily: 'Arial', fontSize: '12px', color: SAVE.cleared[s.galaxy] ? '#86efac' : '#94a3b8'
       }).setOrigin(0.5));
-      this.keep(this.add.text(x, y + 24, 'Vida ' + s.hp + '   Vel ' + s.speed + '\nDano x' + s.dmgMult + '   Recarga x' + s.cdMult + '\nArma: ' + WEAPONS[s.start].name, {
+      this.keep(this.add.text(x, y + 24, 'Vida ' + s.hp + '   Vel ' + s.speed + '\nDano x' + s.dmgMult + '   Recarga x' + s.cdMult + '\nPoder: ' + WEAPONS[s.start].name, {
         fontFamily: 'Arial', fontSize: '12px', color: '#cbd5e1', align: 'center'
       }).setOrigin(0.5));
       this.keep(this.add.text(x, y + 64, s.desc, { fontFamily: 'Arial', fontSize: '11px', color: '#94a3b8' }).setOrigin(0.5));

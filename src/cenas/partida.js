@@ -204,7 +204,8 @@ class GameScene extends Phaser.Scene {
     const opts = [];
     this.weapons.forEach((w) => { if (!w.evolved && w.level < MAX_WEAPON_LEVEL) opts.push({ kind: 'weapon', id: w.id, level: w.level + 1, weight: 1.4 }); });
     if (this.weapons.length < MAX_WEAPONS) {
-      Object.keys(WEAPONS).forEach((id) => { if (!WEAPONS[id].hidden && !this.hasWeapon(id)) opts.push({ kind: 'weapon', id, level: 1, weight: 1 }); });
+      // armas novas: só as comuns (poder de nave nunca aparece como arma nova)
+      Object.keys(WEAPONS).forEach((id) => { if (this.armaDisponivel(id) && !this.hasWeapon(id)) opts.push({ kind: 'weapon', id, level: 1, weight: 1 }); });
     }
     Object.keys(PASSIVES).forEach((id) => {
       const lv = this.passives[id] || 0;
@@ -213,6 +214,11 @@ class GameScene extends Phaser.Scene {
       opts.push({ kind: 'passive', id, level: lv + 1, weight: lv ? 1.2 : 0.9 });
     });
     return opts;
+  }
+  // Arma comum que pode aparecer nas cartas: não é poder de nave e não está travada
+  armaDisponivel(id) {
+    const d = WEAPONS[id];
+    return !d.poder && !d.hidden;
   }
   pickWeighted(list, n) {
     const pool = list.slice(), out = [];
@@ -642,7 +648,7 @@ class GameScene extends Phaser.Scene {
     // comportamento próprio (src/comportamentos.js)
     e.idInimigo = id; e.comp = t.comp; e.velBase = e.speedV;
     e.est = { lado: Math.random() < 0.5 ? -1 : 1, semente: Math.random() * 10 };
-    e.intangivel = false; e.parado = false; e.roubadas = 0; e.semRecompensa = false; e.ultimoDano = 0;
+    e.intangivel = false; e.parado = false; e.roubadas = 0; e.semRecompensa = false; e.ultimoDano = 0; e.atordoado = 0; e.atordoamentos = 0;
     return e;
   }
 
@@ -777,6 +783,7 @@ class GameScene extends Phaser.Scene {
         continue;
       }
       if (e.kbT > 0) { e.kbT -= dt; e.setVelocity(e.kbx, e.kby); continue; }
+      if (e.atordoado > 0) { e.atordoado -= dt; e.setVelocity(0, 0); continue; }   // Martelo Gravitacional
       const dx = px - e.x, dy = py - e.y, d = Math.hypot(dx, dy) || 1;
       if (!e.isBoss && !e.isElite && d > 1400) {
         const p = this.spawnPoint(); e.setPosition(p.x, p.y); continue;   // reposiciona em vez de sumir
@@ -1000,7 +1007,10 @@ class GameScene extends Phaser.Scene {
       w.timer -= dt;
       if (w.timer > 0) return;
       let fired = false;
-      if (w.id === 'pulsar') fired = this.firePulsar(s);
+      if (w.id === 'rajada') fired = this.fireRajada(s);
+      else if (w.id === 'martelo') fired = this.fireMartelo(s);
+      else if (w.id === 'agulhas') fired = this.fireAgulhas(s);
+      else if (w.id === 'pulsar') fired = this.firePulsar(s);
       else if (w.id === 'missiles') fired = this.fireMissiles(s);
       else if (w.id === 'shock') fired = this.fireShock(s);
       else if (w.id === 'chain') fired = this.fireChain(s);
@@ -1016,10 +1026,63 @@ class GameScene extends Phaser.Scene {
     const b = this.bullets.get(x, y, 'bullet');
     if (!b) return;
     b.enableBody(true, x, y, true, true);
-    b.setDepth(8);
+    b.setDepth(8).clearTint().setScale(1);
     b.body.setCircle(5);
     b.setVelocity(Math.cos(a) * 620, Math.sin(a) * 620);
-    b.life = 1.1; b.pierceLeft = pierce; b.hitSet = new Set(); b.dmg = dmg;
+    b.life = 1.1; b.pierceLeft = pierce; b.hitSet = new Set(); b.dmg = dmg; b.ricochete = 0;
+    return b;
+  }
+
+  // ---------- PODERES EXCLUSIVOS ----------
+  // Falcão: leque de tiros; cada tiro pula para outro inimigo ao acertar (ricochete)
+  fireRajada(s) {
+    const t = this.nearestTarget(560);
+    if (!t) return false;
+    const px = this.player.x, py = this.player.y;
+    const base = Phaser.Math.Angle.Between(px, py, t.x, t.y);
+    for (let i = 0; i < s.amount; i++) {
+      const b = this.shoot(px, py, base + (i - (s.amount - 1) / 2) * 0.2, s.dmg, 0);
+      if (b) { b.ricochete = s.ricochete; b.setTint(0x93c5fd); }
+    }
+    this.player.rotation = base + Math.PI / 2;
+    return true;
+  }
+  // Titã: onda que esmaga e atordoa; evoluída, puxa os inimigos antes
+  fireMartelo(s) {
+    const px = this.player.x, py = this.player.y, r = s.radius;
+    const near = this.nearestTarget(r * 1.1);
+    if (!near || Math.hypot(near.x - px, near.y - py) > r * 1.1 + (near.hitR || 14)) return false;
+    const anel = this.add.circle(px, py, 12, 0xf59e0b, 0.25).setStrokeStyle(6, 0xfbbf24, 0.9).setDepth(9);
+    this.tweens.add({ targets: anel, radius: r, alpha: 0, duration: 260, onComplete: () => anel.destroy() });
+    this.cameras.main.shake(90, 0.004);
+    this.forEachTarget((t) => {
+      const d = Math.hypot(t.x - px, t.y - py);
+      if (s.puxa && !t.isRock && d < r * 1.6) this.knock(t, px, py, -320);
+      if (d < r + (t.hitR || 14)) {
+        this.damageTarget(t, s.dmg);
+        if (!t.isRock && !t.isBoss) { t.atordoado = s.atordoa; t.atordoamentos = (t.atordoamentos || 0) + 1; }
+      }
+    });
+    return true;
+  }
+  // Agulha: um dardo muito rápido para cada inimigo perto
+  fireAgulhas(s) {
+    const px = this.player.x, py = this.player.y;
+    const alvos = [];
+    const perto = this.nearestTarget(600);
+    if (!perto) return false;
+    alvos.push(perto);
+    this.enemies.children.iterate((e) => {
+      if (e && e.active && !e.intangivel && e !== perto && Math.hypot(e.x - px, e.y - py) < 600) alvos.push(e);
+    });
+    alvos.sort((a, b) => Math.hypot(a.x - px, a.y - py) - Math.hypot(b.x - px, b.y - py));
+    for (let i = 0; i < s.amount; i++) {
+      const t = alvos[i % alvos.length];
+      const a = Math.atan2(t.y - py, t.x - px) + (i >= alvos.length ? (Math.random() - 0.5) * 0.3 : 0);
+      const b = this.shoot(px, py, a, s.dmg, s.pierce);
+      if (b) { b.setVelocity(Math.cos(a) * 950, Math.sin(a) * 950); b.setTint(0xf0abfc).setScale(0.8); b.life = 0.8; }
+    }
+    return true;
   }
 
   firePulsar(s) {
@@ -1210,6 +1273,22 @@ class GameScene extends Phaser.Scene {
       if (Math.abs(Phaser.Math.Angle.Wrap(ang - e.est.escudoAng)) < 0.9) { dmg *= 0.15; this.boom(b.x, b.y, 2, 0xcbd5e1); }
     }
     this.damageTarget(e, dmg);
+    // Rajada Falcão: o tiro pula para o inimigo mais perto que ainda não acertou
+    if (b.ricochete > 0) {
+      let prox = null, bd = 320 * 320;
+      this.enemies.children.iterate((o) => {
+        if (!o || !o.active || o.intangivel || b.hitSet.has(o)) return;
+        const d2 = (o.x - b.x) ** 2 + (o.y - b.y) ** 2;
+        if (d2 < bd) { bd = d2; prox = o; }
+      });
+      if (prox) {
+        b.ricochete--;
+        const a = Math.atan2(prox.y - b.y, prox.x - b.x);
+        b.setVelocity(Math.cos(a) * 620, Math.sin(a) * 620);
+        b.life = Math.max(b.life, 0.6);
+        return;
+      }
+    }
     if (b.pierceLeft > 0) b.pierceLeft--;
     else b.disableBody(true, true);
   }
