@@ -70,11 +70,6 @@ class HangarScene extends Phaser.Scene {
         SAVE.credits -= cost; SAVE.meta[u.id] = lvl + 1; writeSave(SAVE); this.build();
       }, { disabled: !can, size: 12 }));
     });
-    const perHour = idleRatePerMin() * 60;
-    this.keep(this.add.text(W / 2, 498, perHour > 0
-      ? 'Enquanto você está fora, suas naves farmam ~' + fmt(perHour) + ' créditos/hora (até ' + OFFLINE_CAP_HOURS + 'h).'
-      : 'Jogue uma partida: seu ritmo de abates define quanto as naves farmam enquanto você está fora.',
-    { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8' }).setOrigin(0.5));
     this.keep(this.add.text(W / 2, 520, 'Mover: WASD/setas ou arrastar  •  Automático: ESPAÇO  •  Escolhas: 1/2/3', {
       fontFamily: 'Arial', fontSize: '11px', color: '#64748b'
     }).setOrigin(0.5));
