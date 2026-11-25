@@ -5,9 +5,12 @@ class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
   create() {
     SHIPS.forEach((s) => pixelTexture(this, 'ship_' + s.id, ART[s.art], s.palette, 3));
+    galaxiaDistante(this, 'galaxia_distante');   // usada no fundo de cada galáxia
     GALAXIES.forEach((g, i) => {
       bossTexture(this, 'boss_' + i, g);
       planetTexture(this, 'planet_' + i, g.planet);
+      planetasDaGalaxia(this, i, g);                       // planetas com volume
+      fundoTextura(this, 'fundo_' + i, g.bg, g.alien.b);   // fundo com degradê
       gfxTexture(this, 'nest_' + i, 120, 120, (gr) => {
         const a = hexToInt(g.alien.a), b = hexToInt(g.alien.b), d = hexToInt(g.alien.d);
         gr.fillStyle(a); gr.fillCircle(60, 60, 56);
@@ -92,6 +95,8 @@ class BootScene extends Phaser.Scene {
     starTexture(this, 'stars_far', 256, 70, 1);
     starTexture(this, 'stars_near', 256, 22, 2);
     nebulaTexture(this, 'nebula');
+    [0, 1, 2].forEach((k) => nebulosaTextura(this, 'nebulosa_' + k, 77 + k * 13));
+    estrelasBrilhantes(this, 'stars_mid', 384, 16);
 
     writeSave(SAVE);
     this.scene.start('Hangar');

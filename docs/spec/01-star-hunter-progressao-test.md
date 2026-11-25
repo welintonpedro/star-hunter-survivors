@@ -25,7 +25,9 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 - **CA-12** Está pronto quando dá para mudar a quantidade de inimigos de um minuto mexendo só na tabela.
 - **CA-13** Está pronto quando o jogo pausa pelo botão, pela tecla ESC ou P e ao trocar de aba, e o relógio não anda durante a pausa.
 - **CA-14** Está pronto quando ficar em outra aba não conta tempo de partida nem rendimento do automático.
-- **CA-40** Está pronto quando, nos primeiros minutos, os inimigos chegam em ondas com um respiro entre elas, e um jogador sem melhorias passa de 2:30 sem dificuldade exagerada.
+- **CA-40** Está pronto quando sempre há inimigos na tela (nunca abaixo do mínimo do minuto), a quantidade cresce até muitos no fim, e um jogador sem melhorias passa de 2:30 sem dificuldade exagerada.
+- **CA-44** Está pronto quando ficar ao lado do buraco negro não dá XP (os engolidos não rendem nada) e ele cresce conforme engole inimigos.
+- **CA-45** Está pronto quando a nave, sem inimigos para mirar, aponta para onde está indo.
 - **CA-41** Está pronto quando um meteoro colado na nave é atacado mesmo com inimigos por perto, por qualquer arma (inclusive os mísseis do Titã).
 - **CA-42** Está pronto quando, com o automático ligado, o chefe e a nave-mãe só aparecem depois que o jogador desliga o automático, e os subchefes aparecem no horário mesmo assim.
 

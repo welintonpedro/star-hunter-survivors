@@ -25,7 +25,7 @@ function genPOIs(gi) {
   const list = [];
   TIPOS_DE_LOCAL.forEach((t) => {
     for (let i = 0; i < t.qtd; i++) {
-      const p = { type: t.type, name: t.nome, escala: 0.85 + rnd() * 0.4 };
+      const p = { type: t.type, name: t.nome, escala: 0.85 + rnd() * 0.4, variante: i };
       if (t.type === 'planet') {
         const base = gal.planetNames[i % 2];
         p.name = 'Planeta ' + (i < 2 ? base : base + ' ' + ROMANOS[Math.floor(i / 2) - 1]);

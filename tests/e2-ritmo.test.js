@@ -1,5 +1,7 @@
-// E2 — curva de dificuldade (ondas e fluxo) e horários dos eventos
+// E2 — curva de dificuldade e horários dos eventos
 // Regras: RN-01, RN-03, RN-05, RN-06, RN-07 · Casos: CT-09, CT-15, CT-16, CT-62 a CT-65
+// Desde 25/11/2026 (pedido do dono): em vez de ondas fechadas, cada minuto tem um
+// mínimo e um máximo de inimigos vivos, crescendo até muitos inimigos no fim.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { ONDAS } = require('../src/dados/ondas.js');
@@ -9,91 +11,75 @@ const {
   quantosAte, proximoEvento
 } = require('../src/ritmo.js');
 
-// Simula o nascimento de inimigos. "matar" decide quantos dos vivos morrem a cada passo.
-function simular({ de = 0, ate, dt = 0.1, tabela = ONDAS, matar = () => 0 }) {
-  const estado = novoEstadoOndas(de);
-  let vivos = 0, total = 0;
+// Simula o nascimento. "matar" decide quantos dos vivos morrem a cada passo.
+function simular({ de = 0, ate, dt = 0.1, tabela = ONDAS, matar = () => 0, vivosIniciais = 0 }) {
+  const estado = novoEstadoOndas(0);
+  let vivos = vivosIniciais, total = 0;
   const historico = [];
   for (let t = de; t < ate; t += dt) {
     vivos -= Math.min(vivos, matar(vivos, t));
     const n = passoNascimento(estado, t, dt, vivos, tabela);
     vivos += n; total += n;
-    historico.push({ t, n, vivos, fase: estado.fase, onda: estado.onda });
+    historico.push({ t, n, vivos });
   }
-  return { historico, total, vivos, estado };
+  return { historico, total, vivos };
 }
 
-test('CT-15: a tabela tem 30 minutos; os 10 primeiros em ondas e o resto em fluxo, sempre crescendo', () => {
+test('CT-15: 30 minutos na tabela; mínimo e máximo sempre crescendo até muitos inimigos no fim', () => {
   assert.equal(ONDAS.length, 30);
-  ONDAS.forEach((l, m) => assert.equal(l.modo, m < 10 ? 'ondas' : 'fluxo', 'minuto ' + m));
+  ONDAS.forEach((l, m) => assert.ok(l.min <= l.max, 'minuto ' + m));
   for (let m = 1; m < 30; m++) {
-    assert.ok(ONDAS[m].vida >= ONDAS[m - 1].vida, 'vida não pode cair no minuto ' + m);
-    if (m < 10) assert.ok(ONDAS[m].tamanho >= ONDAS[m - 1].tamanho, 'onda menor no minuto ' + m);
-    if (m > 10) assert.ok(ONDAS[m].porSegundo >= ONDAS[m - 1].porSegundo, 'fluxo menor no minuto ' + m);
+    ['min', 'max', 'porSegundo', 'vida'].forEach((k) => assert.ok(ONDAS[m][k] >= ONDAS[m - 1][k], k + ' caiu no minuto ' + m));
   }
-  assert.ok(ONDAS[0].tamanho <= 6, 'a primeira onda deve ser pequena');
+  assert.ok(ONDAS[0].min >= 4 && ONDAS[0].max <= 20, 'começo com poucos, mas não vazio');
+  assert.ok(ONDAS[29].max >= 200, 'fim com muitos inimigos');
 });
 
-test('CT-62: sem matar ninguém, a primeira onda solta só o tamanho dela até o tempo máximo', () => {
-  const l0 = ONDAS[0];
-  const { historico } = simular({ ate: l0.tempoMax });
-  const nascidos = historico.reduce((s, h) => s + h.n, 0);
-  assert.equal(nascidos, l0.tamanho);
+test('CT-62: abaixo do mínimo, os inimigos são repostos rápido (sem aparecer todos de uma vez)', () => {
+  const { historico } = simular({ ate: 8, matar: (v, t) => (t > 5 && t < 5.2 ? v : 0) });
+  const l = linhaDoMinuto(ONDAS, 4);
+  const em4s = historico.find((h) => h.t >= 4);
+  assert.ok(em4s.vivos >= l.min, 'em 2 s depois da calma inicial já deveria ter o mínimo: ' + em4s.vivos);
+  historico.forEach((h) => assert.ok(h.n <= 2, 'nasceram ' + h.n + ' de uma vez'));
+  const depois = historico.find((h) => h.t >= 7);
+  assert.ok(depois.vivos >= l.min, 'depois de matar todos, repõe até o mínimo');
 });
 
-test('CT-64: sem matar ninguém, a próxima onda vem depois do tempo máximo + respiro', () => {
-  const l0 = ONDAS[0];
-  const { historico } = simular({ ate: 60 });
-  const inicioOnda2 = historico.find((h) => h.onda === 2);
-  assert.ok(inicioOnda2, 'a segunda onda deveria começar');
-  assert.ok(inicioOnda2.t >= l0.tempoMax, 'onda 2 começou cedo demais: ' + inicioOnda2.t);
-  assert.ok(inicioOnda2.t <= l0.tempoMax + l0.respiro + 3, 'onda 2 demorou: ' + inicioOnda2.t);
+test('CT-64: sem matar ninguém, nunca passa do máximo do minuto', () => {
+  const { historico } = simular({ ate: 300 });
+  historico.forEach((h) => assert.ok(h.vivos <= linhaDoMinuto(ONDAS, h.t).max, 'passou do máximo em ' + h.t.toFixed(1)));
+  assert.ok(historico[historico.length - 1].vivos >= linhaDoMinuto(ONDAS, 299).max - 1, 'deveria encher até o máximo');
 });
 
-test('CT-63: matando a maioria, a próxima onda vem logo depois do respiro', () => {
-  const l0 = ONDAS[0];
-  const { historico } = simular({ ate: 40, matar: (v) => v }); // mata todo mundo assim que nasce
-  const inicioOnda2 = historico.find((h) => h.onda === 2);
-  assert.ok(inicioOnda2.t < l0.tempoMax, 'deveria vir antes do tempo máximo, veio em ' + inicioOnda2.t);
-  const fimOnda1 = historico.filter((h) => h.onda === 1 && h.fase === 'respiro')[0];
-  assert.ok(inicioOnda2.t - fimOnda1.t >= l0.respiro - 0.2, 'o respiro deve ser respeitado');
-});
-
-test('CT-62: nos 10 primeiros minutos cada onda solta exatamente o seu tamanho (nada infinito)', () => {
-  const { historico } = simular({ ate: 600, matar: (v) => Math.ceil(v * 0.05) });
-  const porOnda = new Map();
-  historico.forEach((h) => {
-    if (!h.n) return;
-    const o = porOnda.get(h.onda) || { n: 0, t: h.t };
-    o.n += h.n; porOnda.set(h.onda, o);
-  });
-  assert.ok(porOnda.size >= 10, 'deveria haver várias ondas em 10 min, houve ' + porOnda.size);
-  porOnda.forEach((o, onda) => {
-    assert.equal(o.n, linhaDoMinuto(ONDAS, o.t).tamanho, 'onda ' + onda + ' em ' + o.t.toFixed(1));
-  });
-});
-
-test('CT-65: do minuto 10 em diante os inimigos chegam em fluxo, no ritmo da tabela e sem passar do teto', () => {
-  const l = linhaDoMinuto(ONDAS, 700); // minuto 11
-  const { total } = simular({ de: 700, ate: 710, matar: (v) => v });
-  assert.ok(Math.abs(total - l.porSegundo * 10) <= 1.5, 'nasceram ' + total);
-  const cheio = simular({ de: 660, ate: 719 }); // fica dentro do minuto 11
-  assert.ok(cheio.vivos <= l.maxNaTela, 'passou do teto: ' + cheio.vivos);
+test('CT-65: entre o mínimo e o máximo, nascem no ritmo da tabela', () => {
+  const l = linhaDoMinuto(ONDAS, 700);
+  const meio = Math.round((l.min + l.max) / 2);
+  // mantém sempre "meio" vivos: mata exatamente o que nascer
+  const est = novoEstadoOndas(0); let total = 0;
+  for (let t = 700; t < 710; t += 0.1) total += passoNascimento(est, t, 0.1, meio, ONDAS);
+  const esperado = linhaDoMinuto(ONDAS, 705).porSegundo * 10;
+  assert.ok(Math.abs(total - esperado) <= 2, 'nasceram ' + total + ', esperado ~' + esperado.toFixed(1));
 });
 
 test('CT-16: mudar a tabela muda quantos inimigos nascem, sem mexer na lógica', () => {
-  const dobrada = ONDAS.map((l) => (l.modo === 'ondas' ? { ...l, tamanho: l.tamanho * 2 } : l));
-  const normal = simular({ ate: 20 }).total;
-  const dobro = simular({ ate: 20, tabela: dobrada }).total;
-  assert.equal(dobro, normal * 2);
+  const dobrada = ONDAS.map((l) => ({ ...l, min: l.min * 2, max: l.max * 2 }));
+  // depois de 1 minuto sem matar ninguém, cada tabela encheu até o próprio máximo
+  const normal = simular({ ate: 59 }).vivos;
+  const dobro = simular({ ate: 59, tabela: dobrada }).vivos;
+  assert.ok(dobro >= normal * 1.8, normal + ' x ' + dobro);
 });
 
-test('escolherTipo sorteia pelos pesos da tabela', () => {
-  const pesos = { bug: 1, diamond: 0, saucer: 1 };
-  assert.equal(escolherTipo(pesos, 0), 'bug');
-  assert.equal(escolherTipo(pesos, 0.49), 'bug');
-  assert.equal(escolherTipo(pesos, 0.51), 'saucer');
-  assert.equal(escolherTipo(pesos, 0.9999), 'saucer');
+test('a tabela é suavizada: não há degrau na virada do minuto', () => {
+  const a = linhaDoMinuto(ONDAS, 599.9), b = linhaDoMinuto(ONDAS, 600.1);
+  assert.ok(Math.abs(a.max - b.max) <= 1 && Math.abs(a.min - b.min) <= 1);
+});
+
+test('escolherTipo sorteia pelos pesos', () => {
+  const pesos = { a: 1, b: 0, c: 1 };
+  assert.equal(escolherTipo(pesos, 0), 'a');
+  assert.equal(escolherTipo(pesos, 0.49), 'a');
+  assert.equal(escolherTipo(pesos, 0.51), 'c');
+  assert.equal(escolherTipo(pesos, 0.9999), 'c');
 });
 
 test('CT-09: subchefes aos 3, 6 … 27 min e nenhum aos 30', () => {
@@ -111,7 +97,7 @@ test('CT-10: chefes aos 10, 20 e 25 min, cada um mais forte; nave-mãe aos 30', 
   assert.equal(EVENTOS.naveMae, 1800);
 });
 
-test('cercos e enxames só começam depois da fase inicial (a partir de ~5 min)', () => {
+test('cercos e enxames só começam depois de alguns minutos', () => {
   assert.equal(quantosAte(299, EVENTOS.cercos), 0);
   assert.equal(quantosAte(239, EVENTOS.enxames), 0);
 });

@@ -1,48 +1,44 @@
-// ============ TABELA DE ONDAS (uma linha por minuto da partida) ============
-// Ajuste os números aqui para mudar a dificuldade, sem mexer na lógica (RN-07).
-//
-// Minutos 0 a 9  → modo 'ondas': grupos fechados de inimigos, com respiro entre eles.
-//   tamanho   = quantos inimigos a onda traz
-//   respiro   = segundos de calma depois que a onda acaba
-//   tempoMax  = se o jogador não matar a maioria, a próxima onda vem depois deste tempo (s)
-// Minutos 10 a 29 → modo 'fluxo': inimigos chegando sem parar.
-//   porSegundo = quantos nascem por segundo
-//   maxNaTela  = teto de inimigos comuns vivos ao mesmo tempo
-// Em todas as linhas:
-//   vida  = multiplica a vida dos inimigos comuns (1 = vida base)
-// Quais inimigos aparecem e quando: src/dados/inimigos.js (campo "entra" e "peso").
+// ============ TABELA DE INIMIGOS POR MINUTO ============
+// Ajuste os números aqui para mudar a dificuldade, sem mexer na lógica (RN-06, RN-07).
+// Uma linha por minuto da partida (0 a 29):
+//   min        = mínimo de inimigos comuns vivos: abaixo disso, nascem rápido até chegar lá
+//   max        = máximo de inimigos comuns vivos: chegando nele, param de nascer
+//   porSegundo = entre o mínimo e o máximo, quantos nascem por segundo
+//   vida       = multiplica a vida dos inimigos comuns (1 = vida base)
+// Os números são suavizados entre um minuto e o seguinte (não dão "degrau").
+// Quais inimigos aparecem e quando: src/dados/inimigos.js (campos "entra" e "peso").
 
 const ONDAS = [
-  /* 0 */ { modo: 'ondas', tamanho: 5,  respiro: 4,   tempoMax: 25, vida: 1.0 },
-  /* 1 */ { modo: 'ondas', tamanho: 7,  respiro: 4,   tempoMax: 25, vida: 1.1 },
-  /* 2 */ { modo: 'ondas', tamanho: 9,  respiro: 3.5, tempoMax: 24, vida: 1.2 },
-  /* 3 */ { modo: 'ondas', tamanho: 11, respiro: 3.5, tempoMax: 22, vida: 1.35 },
-  /* 4 */ { modo: 'ondas', tamanho: 13, respiro: 3,   tempoMax: 22, vida: 1.5 },
-  /* 5 */ { modo: 'ondas', tamanho: 15, respiro: 3,   tempoMax: 20, vida: 1.7 },
-  /* 6 */ { modo: 'ondas', tamanho: 18, respiro: 2.5, tempoMax: 20, vida: 1.9 },
-  /* 7 */ { modo: 'ondas', tamanho: 21, respiro: 2.5, tempoMax: 18, vida: 2.1 },
-  /* 8 */ { modo: 'ondas', tamanho: 24, respiro: 2,   tempoMax: 18, vida: 2.35 },
-  /* 9 */ { modo: 'ondas', tamanho: 28, respiro: 2,   tempoMax: 16, vida: 2.6 },
-  /* 10 */ { modo: 'fluxo', porSegundo: 1.6, maxNaTela: 45,  vida: 2.9 },
-  /* 11 */ { modo: 'fluxo', porSegundo: 1.9, maxNaTela: 55,  vida: 3.2 },
-  /* 12 */ { modo: 'fluxo', porSegundo: 2.2, maxNaTela: 65,  vida: 3.5 },
-  /* 13 */ { modo: 'fluxo', porSegundo: 2.5, maxNaTela: 75,  vida: 3.8 },
-  /* 14 */ { modo: 'fluxo', porSegundo: 2.8, maxNaTela: 85,  vida: 4.1 },
-  /* 15 */ { modo: 'fluxo', porSegundo: 3.1, maxNaTela: 95,  vida: 4.4 },
-  /* 16 */ { modo: 'fluxo', porSegundo: 3.4, maxNaTela: 105, vida: 4.7 },
-  /* 17 */ { modo: 'fluxo', porSegundo: 3.7, maxNaTela: 115, vida: 5.0 },
-  /* 18 */ { modo: 'fluxo', porSegundo: 4.0, maxNaTela: 125, vida: 5.3 },
-  /* 19 */ { modo: 'fluxo', porSegundo: 4.3, maxNaTela: 135, vida: 5.6 },
-  /* 20 */ { modo: 'fluxo', porSegundo: 4.6, maxNaTela: 145, vida: 5.9 },
-  /* 21 */ { modo: 'fluxo', porSegundo: 4.9, maxNaTela: 155, vida: 6.2 },
-  /* 22 */ { modo: 'fluxo', porSegundo: 5.2, maxNaTela: 165, vida: 6.5 },
-  /* 23 */ { modo: 'fluxo', porSegundo: 5.5, maxNaTela: 175, vida: 6.8 },
-  /* 24 */ { modo: 'fluxo', porSegundo: 5.8, maxNaTela: 180, vida: 7.1 },
-  /* 25 */ { modo: 'fluxo', porSegundo: 6.1, maxNaTela: 185, vida: 7.4 },
-  /* 26 */ { modo: 'fluxo', porSegundo: 6.4, maxNaTela: 190, vida: 7.7 },
-  /* 27 */ { modo: 'fluxo', porSegundo: 6.7, maxNaTela: 195, vida: 8.0 },
-  /* 28 */ { modo: 'fluxo', porSegundo: 7.0, maxNaTela: 200, vida: 8.3 },
-  /* 29 */ { modo: 'fluxo', porSegundo: 7.3, maxNaTela: 200, vida: 8.6 }
+  /*  0 */ { min:   6, max:  14, porSegundo: 0.8, vida: 1.0 },
+  /*  1 */ { min:   8, max:  19, porSegundo: 1.0, vida: 1.1 },
+  /*  2 */ { min:  11, max:  24, porSegundo: 1.2, vida: 1.2 },
+  /*  3 */ { min:  14, max:  31, porSegundo: 1.4, vida: 1.35 },
+  /*  4 */ { min:  18, max:  37, porSegundo: 1.7, vida: 1.5 },
+  /*  5 */ { min:  22, max:  44, porSegundo: 1.9, vida: 1.7 },
+  /*  6 */ { min:  26, max:  51, porSegundo: 2.1, vida: 1.9 },
+  /*  7 */ { min:  30, max:  58, porSegundo: 2.3, vida: 2.1 },
+  /*  8 */ { min:  35, max:  65, porSegundo: 2.5, vida: 2.35 },
+  /*  9 */ { min:  40, max:  73, porSegundo: 2.7, vida: 2.6 },
+  /* 10 */ { min:  45, max:  80, porSegundo: 2.9, vida: 2.9 },
+  /* 11 */ { min:  50, max:  88, porSegundo: 3.2, vida: 3.2 },
+  /* 12 */ { min:  55, max:  96, porSegundo: 3.4, vida: 3.5 },
+  /* 13 */ { min:  60, max: 104, porSegundo: 3.6, vida: 3.8 },
+  /* 14 */ { min:  66, max: 112, porSegundo: 3.8, vida: 4.1 },
+  /* 15 */ { min:  71, max: 120, porSegundo: 4.0, vida: 4.4 },
+  /* 16 */ { min:  77, max: 128, porSegundo: 4.2, vida: 4.7 },
+  /* 17 */ { min:  83, max: 136, porSegundo: 4.4, vida: 5.0 },
+  /* 18 */ { min:  89, max: 145, porSegundo: 4.6, vida: 5.3 },
+  /* 19 */ { min:  95, max: 153, porSegundo: 4.9, vida: 5.6 },
+  /* 20 */ { min: 101, max: 161, porSegundo: 5.1, vida: 5.9 },
+  /* 21 */ { min: 107, max: 170, porSegundo: 5.3, vida: 6.2 },
+  /* 22 */ { min: 114, max: 178, porSegundo: 5.5, vida: 6.5 },
+  /* 23 */ { min: 120, max: 187, porSegundo: 5.7, vida: 6.8 },
+  /* 24 */ { min: 126, max: 196, porSegundo: 5.9, vida: 7.1 },
+  /* 25 */ { min: 133, max: 205, porSegundo: 6.1, vida: 7.4 },
+  /* 26 */ { min: 140, max: 213, porSegundo: 6.4, vida: 7.7 },
+  /* 27 */ { min: 146, max: 222, porSegundo: 6.6, vida: 8.0 },
+  /* 28 */ { min: 153, max: 231, porSegundo: 6.8, vida: 8.3 },
+  /* 29 */ { min: 160, max: 240, porSegundo: 7.0, vida: 8.6 }
 ];
 
 if (typeof module !== 'undefined') module.exports = { ONDAS };

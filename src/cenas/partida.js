@@ -32,6 +32,8 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.removeBounds();
     this.aproximarTimer = 0;
     this.cameras.main.setBackgroundColor(this.gal.bg);
+    this.add.image(0, 0, 'fundo_' + this.gi).setOrigin(0).setScrollFactor(0).setDepth(-32);
+    this.mid = this.add.tileSprite(0, 0, W, H, 'stars_mid').setOrigin(0).setScrollFactor(0).setDepth(-29).setAlpha(0.85);
     this.far = this.add.tileSprite(0, 0, W, H, 'stars_far').setOrigin(0).setScrollFactor(0).setTint(this.gal.starTint).setAlpha(0.7).setDepth(-30);
     this.near = this.add.tileSprite(0, 0, W, H, 'stars_near').setOrigin(0).setScrollFactor(0).setDepth(-29);
     this.buildWorld();
@@ -69,21 +71,21 @@ class GameScene extends Phaser.Scene {
   buildWorld() {
     const rnd = mulberry32(99 + this.gi * 31);
     this.nebulas = [];
+    const tons = [hexToInt(this.gal.alien.b), this.gal.starTint, hexToInt(this.gal.planet[1]), hexToInt(this.gal.alien.d)];
     for (let i = 0; i < 90; i++) {
-      this.nebulas.push(this.add.image(rnd() * WORLD, rnd() * WORLD, 'nebula')
-        .setScale(2 + rnd() * 4).setTint(i % 3 === 0 ? hexToInt(this.gal.alien.b) : this.gal.starTint)
-        .setAlpha(0.1 + rnd() * 0.12).setDepth(-20));
+      this.nebulas.push(this.add.image(rnd() * WORLD, rnd() * WORLD, 'nebulosa_' + (i % 3))
+        .setScale(1.5 + rnd() * 3).setRotation(rnd() * Math.PI * 2).setTint(tons[i % tons.length])
+        .setAlpha(0.14 + rnd() * 0.16).setDepth(-20));
     }
 
     this.pois = genPOIs(this.gi).map((p) => {
       const o = Object.assign({}, p, { discovered: false, done: false, scan: 0, cooldown: 0 });
-      const keys = { planet: 'planet_' + this.gi, station: 'station', nest: 'nest_' + this.gi, blackhole: 'blackhole', relic: 'relic',
+      const keys = { planet: 'planeta_' + this.gi + '_' + ((o.variante || 0) % PLANETAS_POR_GALAXIA), station: 'station', nest: 'nest_' + this.gi, blackhole: 'blackhole', relic: 'relic',
         derelict: 'derelict', beacon: 'beacon', cache: 'cache' };
       o.img = this.add.image(o.x, o.y, keys[o.type]).setDepth(o.type === 'blackhole' ? -4 : 1).setScale(o.escala || 1);
-      if (o.type === 'planet' && !o.weapon) o.img.setTint(Phaser.Display.Color.GetColor(200 + (o.escala * 40 | 0), 200, 255 - (o.escala * 60 | 0)));
       if (o.type === 'relic') this.tweens.add({ targets: o.img, scale: 1.25, yoyo: true, repeat: -1, duration: 700 });
       if (o.type === 'beacon') this.tweens.add({ targets: o.img, alpha: 0.6, yoyo: true, repeat: -1, duration: 600 });
-      const alto = { planet: 110, blackhole: 130, derelict: 55, beacon: 62 }[o.type] || 70;
+      const alto = { planet: 185, blackhole: 130, derelict: 55, beacon: 62 }[o.type] || 70;
       o.labelDy = -alto * (o.type === 'relic' ? 1 : (o.escala || 1));
       o.label = this.add.text(o.x, o.y + o.labelDy, o.name, {
         fontFamily: 'Arial', fontSize: '15px', color: '#ffffff', stroke: '#000000', strokeThickness: 4
@@ -482,6 +484,7 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.far.tilePositionX = cam.scrollX * 0.2; this.far.tilePositionY = cam.scrollY * 0.2;
     this.near.tilePositionX = cam.scrollX * 0.5; this.near.tilePositionY = cam.scrollY * 0.5;
+    this.mid.tilePositionX = cam.scrollX * 0.32; this.mid.tilePositionY = cam.scrollY * 0.32;
     if (this.ended || this.paused || this.menuPausa) return;
     const dt = Math.min(delta, 50) / 1000;
     this.elapsed += dt;
@@ -546,6 +549,11 @@ class GameScene extends Phaser.Scene {
     this.moveDir = len > 0.1 ? { x: vx / Math.max(len, 1), y: vy / Math.max(len, 1) } : null;
     const vel = this.mods.speed * (this.lentidao || 1);   // a Névoa deixa a nave lenta
     this.player.setVelocity(vx * vel, vy * vel);
+    // sem mirar em ninguém há pouco tempo: a frente da nave vira para onde ela está indo
+    if (this.moveDir && this.elapsed - (this.ultimaMira || -9) > 0.35) {
+      const alvo = Math.atan2(this.moveDir.y, this.moveDir.x) + Math.PI / 2;
+      this.player.rotation = Phaser.Math.Angle.RotateTo(this.player.rotation, alvo, 0.18);
+    }
   }
 
   // Piloto automático: foge do perigo, coleta gemas e itens, quebra meteoros
@@ -1070,6 +1078,7 @@ class GameScene extends Phaser.Scene {
       if (b) { b.ricochete = s.ricochete; b.setTint(0x93c5fd); }
     }
     this.player.rotation = base + Math.PI / 2;
+    this.ultimaMira = this.elapsed;
     return true;
   }
   // Titã: onda que esmaga e atordoa; evoluída, puxa os inimigos antes
@@ -1118,6 +1127,7 @@ class GameScene extends Phaser.Scene {
     for (let i = 0; i < s.amount; i++) this.shoot(px, py, base + (i - (s.amount - 1) / 2) * 0.14, s.dmg, s.pierce);
     if (s.ring) { this.ringCounter = (this.ringCounter || 0) + 1; if (this.ringCounter % 2 === 0) for (let i = 0; i < 10; i++) this.shoot(px, py, i / 10 * Math.PI * 2, s.dmg * 0.7, s.pierce); }
     this.player.rotation = base + Math.PI / 2;
+    this.ultimaMira = this.elapsed;
     return true;
   }
 
@@ -1408,7 +1418,7 @@ class GameScene extends Phaser.Scene {
       }
       // planetas e destroços: fique perto por 1,5 s para escanear
       if ((p.type === 'planet' || p.type === 'derelict') && !p.done) {
-        const raio = p.type === 'planet' ? 130 : 100, barY = p.y + (p.type === 'planet' ? 85 : 50) * (p.escala || 1);
+        const raio = p.type === 'planet' ? 175 * (p.escala || 1) : 100, barY = p.y + (p.type === 'planet' ? 160 : 50) * (p.escala || 1);
         if (d < raio) {
           p.scan += dt;
           this.scanBar.fillStyle(0x000000, 0.7).fillRect(p.x - 50, barY, 100, 10);
@@ -1470,20 +1480,30 @@ class GameScene extends Phaser.Scene {
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; this.spawnEnemy('bug', p.x + Math.cos(a) * 120, p.y + Math.sin(a) * 120); }
     this.banner('O NINHO DESPERTOU!', '#f87171');
   }
+  // Buraco negro: puxa tudo; o centro machuca. Cada inimigo engolido faz ele crescer
+  // (puxa de mais longe e o centro fica maior) e não dá XP nem créditos.
   updateBlackHole(p, dt, dPlayer) {
+    p.massa = p.massa || 0;
+    const fator = Math.min(3, 1 + p.massa * 0.015);
     p.img.rotation += dt * 0.8;
-    const R = 460;
+    p.img.setScale((p.escala || 1) * fator);
+    const R = 460 * fator, nucleo = 55 * fator;
     if (dPlayer < R) {
-      const f = (1 - dPlayer / R) * 170;
+      const f = (1 - dPlayer / R) * 170 * (0.8 + fator * 0.2);
       this.player.body.velocity.x += (p.x - this.player.x) / dPlayer * f;
       this.player.body.velocity.y += (p.y - this.player.y) / dPlayer * f;
-      if (dPlayer < 55) { this.hp -= 30 * dt; if (this.hp <= 0) this.hurt(0); }
+      if (dPlayer < nucleo) { this.hp -= 30 * fator * dt; if (this.hp <= 0) this.hurt(0); }
     }
     this.enemies.children.iterate((e) => {
       if (!e || !e.active || e.isBoss) return;
       const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
       if (d > R) return;
-      if (d < 45 && !e.isElite) { this.killEnemy(e); return; }
+      if (d < nucleo * 0.8 && !e.isElite) {
+        e.semRecompensa = true;   // engolido: sem XP, sem créditos
+        this.killEnemy(e);
+        p.massa++;
+        return;
+      }
       e.body.velocity.x += dx / d * 140; e.body.velocity.y += dy / d * 140;
     });
   }

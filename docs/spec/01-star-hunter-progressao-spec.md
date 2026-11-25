@@ -31,8 +31,11 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 
 ### 2.2 Curva de dificuldade
 - **RN-06** A partida começa com poucos inimigos e aumenta aos poucos, sem ficar fácil demais. [DECIDIDO]
-  - Nos primeiros ~10 min os inimigos vêm em **ondas fechadas**: cada onda tem um número fixo de inimigos e há um respiro entre elas. A próxima onda vem quando o jogador mata a maioria ou depois de um tempo máximo. Depois dos ~10 min, vira fluxo contínuo crescente. Motivo: na v0.2 o fluxo sem fim no começo fazia o jogador morrer antes de 2:30 e desistir. [DECIDIDO em 25/11/2026]
+  - Cada minuto tem um **mínimo** e um **máximo** de inimigos vivos (tabela src/dados/ondas.js). Abaixo do mínimo, nascem rápido até chegar nele; entre o mínimo e o máximo, nascem no ritmo da tabela; no máximo, param. Os dois crescem até o fim, que termina com muitos inimigos (~160 a 240). Substitui as "ondas fechadas" de 25/11 de manhã, que deixaram o jogo com inimigos de menos. [DECIDIDO em 25/11/2026]
   - Cercos e enxames só começam depois da fase inicial de ondas (a partir de ~5 min). [SUPOSIÇÃO]
+- **RN-49** O buraco negro cresce a cada inimigo que engole (puxa de mais longe e o centro que machuca fica maior, até 3x). Inimigo engolido não dá XP, créditos nem conta como abate, para o jogador não ficar parado ao lado "farmando". [DECIDIDO em 25/11/2026]
+- **RN-50** Quando a nave não está mirando em ninguém, a frente dela vira para o lado em que está andando. [DECIDIDO em 25/11/2026]
+- **RN-51** Planetas maiores e com volume (luz, sombra, atmosfera, alguns com anéis; 4 tipos por galáxia) e fundo do espaço mais bonito (estrelas coloridas, nebulosas em nuvem, galáxias distantes). [DECIDIDO em 25/11/2026]
 - **RN-46** Meteoros bem perto da nave (até ~150 px) são atacados como se fossem inimigos; meteoros mais longe só quando não há inimigo por perto. Vale para todas as armas, inclusive mísseis. [DECIDIDO em 25/11/2026; distância de 150 px é SUPOSIÇÃO]
 - **RN-07** A curva fica numa tabela por minuto (quantidade, ritmo e tipos), separada da lógica. [SUPOSIÇÃO]
 - **RN-08** Alvo de equilíbrio: quem escolhe bem as cartas chega aos 30 min com esforço; quem não melhora a nave morre entre 10 e 15 min. [SUPOSIÇÃO]

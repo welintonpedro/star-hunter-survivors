@@ -4,54 +4,32 @@
 
 const _EVENTOS = typeof EVENTOS !== 'undefined' ? EVENTOS : require('./dados/eventos.js').EVENTOS;
 
-const SOLTURA_ONDA = 2;      // segundos para todos os inimigos de uma onda entrarem
 const CALMA_INICIAL = 2;     // segundos de calma no começo da partida
-const FIM_DA_ONDA = 0.25;    // a onda acaba quando sobram no máximo 25% dos inimigos dela
+const RITMO_REPOR = 8;       // abaixo do mínimo, nascem até 8 por segundo (sem aparecer tudo de uma vez)
 
-// Linha da tabela para o minuto atual (depois do último minuto, repete a última linha)
+// Linha da tabela para o tempo t, suavizada entre o minuto atual e o seguinte
 function linhaDoMinuto(tabela, t) {
   const m = Math.max(0, Math.min(tabela.length - 1, Math.floor(t / 60)));
-  return tabela[m];
+  const a = tabela[m], b = tabela[Math.min(tabela.length - 1, m + 1)];
+  const f = Math.max(0, Math.min(1, t / 60 - m));
+  const mix = (k) => a[k] + (b[k] - a[k]) * f;
+  return { min: Math.round(mix('min')), max: Math.round(mix('max')), porSegundo: mix('porSegundo'), vida: mix('vida') };
 }
 
 function novoEstadoOndas(t) {
-  return { fase: 'respiro', fimRespiro: (t || 0) + CALMA_INICIAL, onda: 0,
-    inicio: 0, tamanho: 0, nascidos: 0, tempoMax: 0, respiro: 0, acumulado: 0 };
+  return { inicio: t || 0, acumulado: 0 };
 }
 
 // Quantos inimigos comuns devem nascer neste passo. "vivos" = inimigos comuns vivos agora.
+// Abaixo do mínimo: repõe rápido. Entre mínimo e máximo: no ritmo da tabela. No máximo: para.
 function passoNascimento(estado, t, dt, vivos, tabela) {
+  if (t < estado.inicio + CALMA_INICIAL) return 0;
   const l = linhaDoMinuto(tabela, t);
-
-  if (l.modo === 'fluxo') {
-    estado.fase = 'fluxo';
-    estado.acumulado += l.porSegundo * dt;
-    let n = Math.floor(estado.acumulado);
-    estado.acumulado -= n;
-    return Math.max(0, Math.min(n, l.maxNaTela - vivos));
-  }
-
-  if (estado.fase === 'fluxo') { estado.fase = 'respiro'; estado.fimRespiro = t; }
-  if (estado.fase === 'respiro') {
-    if (t < estado.fimRespiro) return 0;
-    estado.fase = 'onda'; estado.onda++; estado.inicio = t;
-    estado.tamanho = l.tamanho; estado.nascidos = 0; estado.tempoMax = l.tempoMax; estado.respiro = l.respiro;
-  }
-
-  // Solta a onda aos poucos, em SOLTURA_ONDA segundos
-  const fracao = Math.min(1, (t - estado.inicio + dt) / SOLTURA_ONDA);
-  const alvo = Math.min(estado.tamanho, Math.ceil(estado.tamanho * fracao));
-  const n = Math.max(0, alvo - estado.nascidos);
-  estado.nascidos += n;
-
-  if (estado.nascidos >= estado.tamanho) {
-    const poucos = vivos + n <= Math.floor(estado.tamanho * FIM_DA_ONDA);
-    if (poucos || t - estado.inicio >= estado.tempoMax) {
-      estado.fase = 'respiro';
-      estado.fimRespiro = t + estado.respiro;
-    }
-  }
-  return n;
+  if (vivos >= l.max) { estado.acumulado = 0; return 0; }
+  estado.acumulado += (vivos < l.min ? Math.max(RITMO_REPOR, l.porSegundo) : l.porSegundo) * dt;
+  const n = Math.floor(estado.acumulado);
+  estado.acumulado -= n;
+  return Math.max(0, Math.min(n, l.max - vivos));
 }
 
 // Sorteia um tipo de inimigo pelos pesos (r entre 0 e 1)
