@@ -82,6 +82,8 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
 - **RN-34** O jogo tem conquistas, e elas liberam coisas de jogo (não só créditos ou cores). [DECIDIDO]
 - **RN-35** Armas travadas não aparecem nas cartas: só podem ser achadas em baús de subchefe ou em locais únicos. Achar a mesma arma 3 vezes libera ela nas cartas para sempre. [DECIDIDO]
   - Das 6 armas comuns, 2 começam travadas (ex.: Disco Serra). [SUPOSIÇÃO]
+  - As travadas são o Disco Serra e o Raio em Cadeia (as "escondidas" da v0.2). Saem de 2 planetas por galáxia e de baús de subchefe (35% de chance, em CHANCE_ARMA_TRAVADA). O cristal, que antes dava arma, passa a dar baú comum, para seguir a regra. [SUPOSIÇÃO — escolha da implementação]
+  - Combos: a evolução do Titã usa a Blindagem, o mesmo item da Onda de Choque (só havia 2 itens livres para 3 poderes), como acontece no Vampire Survivors. [SUPOSIÇÃO — escolha da implementação]
 - **RN-36** Bônus permanentes pequenos (ex.: +5% de dano, +1 de vida regenerada). [SUPOSIÇÃO]
 - **RN-37** ~20 conquistas iniciais, com tela própria no hangar. [SUPOSIÇÃO]
 - **RN-38** Exemplos: sobreviver 10/20/30 min; 1º combo e todos os combos; 1.000 e 10.000 abates; todos os locais de uma galáxia; 5 min sem dano; cada galáxia com cada nave. [SUPOSIÇÃO]

@@ -22,7 +22,11 @@ class GameScene extends Phaser.Scene {
     this.chefesFeitos = EVENTOS.chefes.map(() => false);
     this.naveMae = null; this.vitoriaRegistrada = false; this.primeiraVitoria = false;
     this.menuPausa = null;
-    this.xpMult = 1; this.creditMult = 1;
+    // bônus permanentes das conquistas (src/dados/conquistas.js)
+    this.bonusCq = bonusDasConquistas(SAVE);
+    this.xpMult = 1 + this.bonusCq.xp; this.creditMult = 1 + this.bonusCq.creditos;
+    this.ultimoDanoTempo = 0; this.progressoTimer = 1; this.bausSubchefe = 0; this.chanceArmaTravada = CHANCE_ARMA_TRAVADA;
+    this.filaAvisos = []; this.avisoAtivo = false;
     this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
     this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
     this.cullTimer = 0;
@@ -83,8 +87,8 @@ class GameScene extends Phaser.Scene {
         .setAlpha(0.14 + rnd() * 0.16).setDepth(-20));
     }
 
-    this.pois = genPOIs(this.gi).map((p) => {
-      const o = Object.assign({}, p, { discovered: false, done: false, scan: 0, cooldown: 0 });
+    this.pois = genPOIs(this.gi).map((p, indice) => {
+      const o = Object.assign({}, p, { indice, discovered: false, done: false, scan: 0, cooldown: 0 });
       const keys = { planet: 'planeta_' + this.gi + '_' + ((o.variante || 0) % PLANETAS_POR_GALAXIA), station: 'station', nest: 'nest_' + this.gi, blackhole: 'blackhole', relic: 'relic',
         derelict: 'derelict', beacon: 'beacon', cache: 'cache' };
       o.img = this.add.image(o.x, o.y, keys[o.type]).setDepth(o.type === 'blackhole' ? -4 : 1).setScale(o.escala || 1);
@@ -188,6 +192,11 @@ class GameScene extends Phaser.Scene {
       magnet: 90 * (1 + 0.15 * m.magnet) * (1 + 0.3 * lv('magnet')),
       regen: 0.5 * lv('regen')
     };
+    // bônus permanentes das conquistas
+    const b = this.bonusCq;
+    this.mods.dmg *= 1 + b.dano; this.mods.maxHp *= 1 + b.vida; this.mods.regen += b.regen;
+    this.mods.area *= 1 + b.area; this.mods.speed *= 1 + b.velocidade;
+    this.mods.cd *= 1 - b.recarga; this.mods.magnet *= 1 + b.coleta;
     if (oldMax && this.mods.maxHp > oldMax) this.hp += this.mods.maxHp - oldMax;
   }
 
@@ -243,7 +252,7 @@ class GameScene extends Phaser.Scene {
   // Arma comum que pode aparecer nas cartas: não é poder de nave e não está travada
   armaDisponivel(id) {
     const d = WEAPONS[id];
-    return !d.poder && !d.hidden;
+    return !d.poder && (!d.hidden || armaLiberada(SAVE, id));
   }
   pickWeighted(list, n) {
     const pool = list.slice(), out = [];
@@ -336,6 +345,7 @@ class GameScene extends Phaser.Scene {
 
   // ---------- PAUSA (botão II, ESC, P ou trocar de aba) ----------
   alternarPausa() {
+    if (this.codexAberto) return;   // com o códex aberto, ESC/P não mexem na pausa
     if (this.menuPausa) this.fecharPausa(); else this.abrirPausa();
   }
   abrirPausa() {
@@ -348,17 +358,30 @@ class GameScene extends Phaser.Scene {
     const D = 400;
     const parts = [
       this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setScrollFactor(0).setDepth(D).setInteractive(),
-      this.add.rectangle(W / 2, H / 2, 360, 200, 0x0f172a).setStrokeStyle(3, 0x60a5fa).setScrollFactor(0).setDepth(D + 1),
-      this.add.text(W / 2, H / 2 - 55, 'PAUSADO', {
+      this.add.rectangle(W / 2, H / 2, 380, 330, 0x0f172a).setStrokeStyle(3, 0x60a5fa).setScrollFactor(0).setDepth(D + 1),
+      this.add.text(W / 2, H / 2 - 135, 'PAUSADO', {
         fontFamily: 'Arial Black, Arial', fontSize: '30px', color: '#a5f3fc', stroke: '#000000', strokeThickness: 5
       }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2),
-      this.add.text(W / 2, H / 2 - 15, 'O relógio da partida está parado.\nESC ou P para continuar.', {
-        fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1', align: 'center'
+      this.add.text(W / 2, H / 2 - 105, 'O relógio da partida está parado. ESC ou P para continuar.', {
+        fontFamily: 'Arial', fontSize: '12px', color: '#cbd5e1', align: 'center'
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(D + 2)
     ];
-    const btn = makeButton(this, W / 2, H / 2 + 60, 180, 38, 'CONTINUAR', () => this.fecharPausa(),
-      { fixed: true, depth: D + 3, color: 0x166534, stroke: 0x4ade80 });
-    parts.push(btn.bg, btn.txt);
+    const botao = (y, rotulo, acao, cor, borda) => {
+      const b = makeButton(this, W / 2, y, 240, 38, rotulo, acao, { fixed: true, depth: D + 3, color: cor, stroke: borda, size: 15 });
+      parts.push(b.bg, b.txt);
+      return b;
+    };
+    botao(H / 2 - 50, 'CONTINUAR', () => this.fecharPausa(), 0x166534, 0x4ade80);
+    botao(H / 2 - 2, 'CÓDEX', () => {
+      this.codexAberto = true;
+      abrirCodex(this, () => { this.codexAberto = false; });
+    });
+    // automático e recolher nave também na pausa (RN-32)
+    const bAuto = botao(H / 2 + 46, this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO', () => {
+      const m = this.menuPausa; this.menuPausa = null; this.toggleAuto(); this.menuPausa = m;
+      bAuto.setLabel(this.auto ? 'AUTO: LIGADO' : 'AUTO: DESLIGADO');
+    });
+    botao(H / 2 + 94, 'RECOLHER NAVE', () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
     this.menuPausa = { parts };
   }
   fecharPausa() {
@@ -542,6 +565,8 @@ class GameScene extends Phaser.Scene {
     if (this.bankTimer > 10) { this.bankTimer = 0; this.bankCredits(); }
     this.aproximarTimer -= dt;
     if (this.aproximarTimer <= 0) { this.aproximarTimer = 0.4; this.aproximarTudo(); }
+    this.progressoTimer -= dt;
+    if (this.progressoTimer <= 0) { this.progressoTimer = 1; this.atualizarProgresso(); }
     this.cullTimer -= dt;
     if (this.cullTimer <= 0) { this.cullTimer = 0.2; this.esconderLonge(); }
     // se o jogo ficar lento, reduz os efeitos visuais antes de mexer na jogabilidade (RN-12)
@@ -788,6 +813,7 @@ class GameScene extends Phaser.Scene {
     this.vitoriaRegistrada = true;
     this.primeiraVitoria = !SAVE.cleared[this.gi];
     SAVE.cleared[this.gi] = true;
+    SAVE.stats.vitorias[this.gi + ':' + this.ship.id] = true;
     const bonus = 500 * this.gal.rewardMult;
     this.bonus += bonus; this.runCredits += bonus;
     writeSave(SAVE);
@@ -1021,6 +1047,9 @@ class GameScene extends Phaser.Scene {
       // explodiu sozinho (kamikaze, bomba-relógio) não dá recompensa nem efeito de morte
       this.runCredits += e.reward * mult;
       this.kills++;
+      SAVE.stats.abates++;
+      if (e.isElite) SAVE.stats.subchefes++;
+      if (e.isBoss) SAVE.stats.chefes++;
       this.dropGem(e.x, e.y, e.xpVal);
       if (AO_MORRER[e.comp]) AO_MORRER[e.comp](this, e);
     }
@@ -1029,7 +1058,7 @@ class GameScene extends Phaser.Scene {
     const wasBoss = e.isBoss, wasElite = e.isElite;
     e.isElite = false;
     e.disableBody(true, true);
-    if (wasElite) this.dropPickup(e.x, e.y, 'chest');
+    if (wasElite) this.dropPickup(e.x, e.y, 'chest', 'subchefe');   // baú de subchefe pode ter arma travada
     if (wasBoss) this.onBossDefeated(e);
   }
 
@@ -1037,9 +1066,8 @@ class GameScene extends Phaser.Scene {
     this.boom(r.x, r.y, 10, r.crystal ? 0x22d3ee : 0xa8a29e);
     r.disableBody(true, true);
     if (r.crystal) {
-      const hidden = Object.keys(WEAPONS).filter((k) => WEAPONS[k].hidden && !this.hasWeapon(k));
-      if (hidden.length) this.dropPickup(r.x, r.y, 'weapon', Phaser.Utils.Array.GetRandom(hidden));
-      else this.dropPickup(r.x, r.y, 'chest');
+      // arma travada só sai de baú de subchefe e de locais únicos (RN-35): cristal dá baú comum
+      this.dropPickup(r.x, r.y, 'chest');
       return;
     }
     const roll = Math.random();
@@ -1422,7 +1450,7 @@ class GameScene extends Phaser.Scene {
       else if (t === 'coin') { const v = 15 * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
       else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, 'ÍMÃ TOTAL!', '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
-      else if (t === 'chest') { this.pendingChests++; this.openNextModal(); }
+      else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
       else if (t === 'weapon') this.gainHiddenWeapon(extra);
     });
   }
@@ -1440,10 +1468,56 @@ class GameScene extends Phaser.Scene {
   }
 
   gainHiddenWeapon(id) {
+    this.contarArmaAchada(id);
     const res = this.addWeapon(id);
     if (res === 'new') this.banner('ARMA ESCONDIDA ENCONTRADA!\n' + WEAPONS[id].name, '#f0abfc');
     else if (res === 'up') this.banner(WEAPONS[id].name + ' melhorou!', '#f0abfc');
     else { this.banner('Sem espaço para armas: virou um baú!', '#fde047'); this.pendingChests++; this.openNextModal(); }
+  }
+
+  // Arma travada achada: soma no save; na 3ª vez passa a aparecer nas cartas (RN-35)
+  contarArmaAchada(id) {
+    if (!WEAPONS[id].hidden || armaLiberada(SAVE, id)) return;
+    const n = registrarArmaAchada(SAVE, id);
+    if (armaLiberada(SAVE, id)) this.banner(WEAPONS[id].name + ' agora aparece nas cartas!', '#86efac');
+    else this.floatText(this.player.x, this.player.y - 20, WEAPONS[id].name + ' achada ' + n + '/' + ACHADOS_PARA_LIBERAR, '#f0abfc');
+    writeSave(SAVE);
+  }
+
+  // ---------- CONQUISTAS E ESTATÍSTICAS (RN-34 a RN-39) ----------
+  atualizarProgresso() {
+    const st = SAVE.stats, chave = this.gi + ':' + this.ship.id;
+    st.maiorSemDano = Math.max(st.maiorSemDano, this.elapsed - this.ultimoDanoTempo);
+    st.nivelMax = Math.max(st.nivelMax, this.level);
+    st.melhorTempo[chave] = Math.max(st.melhorTempo[chave] || 0, this.elapsed);
+    const novas = verificarConquistas(SAVE, Date.now());
+    if (novas.length) {
+      writeSave(SAVE);
+      this.bonusCq = bonusDasConquistas(SAVE);       // bônus valem na hora
+      this.xpMult = Math.max(this.xpMult, 1 + this.bonusCq.xp);
+      this.recalc();
+      novas.forEach((c) => this.filaAvisos.push(c));
+      this.proximoAviso();
+    }
+  }
+  // Aviso pequeno no canto, sem pausar; vários avisos esperam na fila (CT-55)
+  proximoAviso() {
+    if (this.avisoAtivo || !this.filaAvisos.length || this.ended) return;
+    const c = this.filaAvisos.shift();
+    this.avisoAtivo = true;
+    const x = W - 150, y = 280, D = 160, partes = [];
+    const fixo = (o) => { partes.push(o.setScrollFactor(0).setDepth(D)); return o; };
+    fixo(this.add.rectangle(x, y, 270, 62, 0x14532d, 0.92).setStrokeStyle(2, 0x4ade80));
+    fixo(this.add.text(x, y - 18, 'CONQUISTA!', { fontFamily: 'Arial Black, Arial', fontSize: '13px', color: '#fde047' }).setOrigin(0.5));
+    fixo(this.add.text(x, y, c.nome, { fontFamily: 'Arial', fontSize: '14px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
+    const nomeArma = c.premio.arma ? WEAPONS[c.premio.arma].name : '';
+    fixo(this.add.text(x, y + 18, textoDoPremio(c.premio, nomeArma), { fontFamily: 'Arial', fontSize: '11px', color: '#bbf7d0' }).setOrigin(0.5));
+    this.avisoConquista = partes;
+    this.time.delayedCall(3500, () => {
+      partes.forEach((p) => p.destroy());
+      this.avisoAtivo = false;
+      this.proximoAviso();
+    });
   }
 
   // ---------- LOCAIS ÚNICOS ----------
@@ -1454,6 +1528,8 @@ class GameScene extends Phaser.Scene {
       const d = Math.hypot(p.x - px, p.y - py);
       if (!p.discovered && d < 520) {
         p.discovered = true;
+        const ja = SAVE.stats.locais[this.gi] || (SAVE.stats.locais[this.gi] = []);
+        if (!ja.includes(p.indice)) ja.push(p.indice);   // conta para a conquista de explorar
         this.banner('DESCOBERTO: ' + p.name, '#a5f3fc');
         if (p.type === 'nest') this.triggerNest(p);
         if (p.type === 'beacon') this.acenderFarol(p);
@@ -1631,11 +1707,23 @@ class GameScene extends Phaser.Scene {
       const w = evo[0];
       w.evolved = true;
       combo = w.id;
-      title = 'COMBO!';
+      const novo = registrarCombo(SAVE, w.id);    // fica salvo para sempre, para todas as naves
+      if (novo) writeSave(SAVE);
+      title = novo ? 'COMBO DESCOBERTO!' : 'COMBO!';
       color = '#f0abfc';
-      lines.push('★ ' + WEAPONS[w.id].evoName + ' ★');
+      lines.push('★ ' + WEAPONS[w.id].evoName + ' ★' + (novo ? '\nGuardado no códex' : ''));
       this.cameras.main.flash(300, 240, 171, 252);
     } else {
+      // baú de subchefe: chance (CHANCE_ARMA_TRAVADA) de trazer uma arma travada que você ainda não tem
+      const doSubchefe = this.bausSubchefe > 0;
+      if (doSubchefe) this.bausSubchefe--;
+      const travadas = Object.keys(WEAPONS).filter((k) => WEAPONS[k].hidden && !armaLiberada(SAVE, k) && !this.hasWeapon(k));
+      if (doSubchefe && travadas.length && Math.random() < this.chanceArmaTravada) {
+        const id = travadas[Math.floor(Math.random() * travadas.length)];
+        this.contarArmaAchada(id);
+        const res = this.addWeapon(id);
+        lines.push(res === 'full' ? WEAPONS[id].name + ' (sem espaço)' : 'Arma encontrada: ' + WEAPONS[id].name);
+      }
       const count = Math.random() < 0.2 ? 3 : 1;
       for (let k = 0; k < count; k++) {
         const opts = this.upgradeOptions().filter((o) => o.level > 1);
@@ -1684,6 +1772,7 @@ class GameScene extends Phaser.Scene {
   }
   hurt(d) {
     if (this.ended) return;
+    this.ultimoDanoTempo = this.elapsed;
     this.invuln = 0.5;
     this.hp -= d;
     this.cameras.main.shake(80, 0.006);
@@ -1715,6 +1804,9 @@ class GameScene extends Phaser.Scene {
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }
     this.bankCredits();
+    SAVE.stats.tempoTotal += this.elapsed;
+    this.atualizarProgresso();
+    writeSave(SAVE);
 
     const titles = { victory: 'GALÁXIA CONQUISTADA!', dead: 'NAVE DESTRUÍDA', retreat: 'MISSÃO ENCERRADA' };
     const colors = { victory: '#86efac', dead: '#f87171', retreat: '#a5f3fc' };

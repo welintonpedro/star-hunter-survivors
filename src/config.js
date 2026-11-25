@@ -12,6 +12,7 @@ const W = 960, H = 540;
 const WORLD = 17000;             // tamanho do mapa de cada galáxia (~8x o da v0.2); dá a volta: src/mundo.js
 // Horários de chefes, subchefes, cercos e enxames: src/dados/eventos.js
 // Quantidade de inimigos por minuto: src/dados/ondas.js
+const CHANCE_ARMA_TRAVADA = 0.35; // chance de um baú de subchefe trazer uma arma travada (RN-35)
 const METEORO_PERTO = 150;       // meteoro a essa distância da nave é atacado como inimigo (RN-46)
 const AUTO_REWARD_MULT = 0.6;
 const MAX_ENEMIES = 250;          // limite de inimigos na tela (RN-12)

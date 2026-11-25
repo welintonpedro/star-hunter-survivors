@@ -7,14 +7,29 @@ const SAVE_KEY = 'star_hunter_survivors_save_v1';
 // Ao mudar o formato no futuro, suba este número e converta em converterSave().
 //   2 → save ganhou número de versão (E1)
 //   3 → ganho offline removido: sai a melhoria "Drones de Coleta" (meta.idle) e o bestRate
-const SAVE_VERSION = 3;
+//   4 → combos descobertos, conquistas e estatísticas entre partidas (E8, E9)
+const SAVE_VERSION = 4;
+
+// Estatísticas somadas entre partidas (usadas pelas conquistas)
+function statsIniciais() {
+  return {
+    abates: 0, tempoTotal: 0, subchefes: 0, chefes: 0, nivelMax: 0, maiorSemDano: 0,
+    melhorTempo: {},   // 'galáxia:nave' → segundos
+    vitorias: {},      // 'galáxia:nave' → true
+    locais: {},        // galáxia → lista dos locais já descobertos (índices)
+    armasAchadas: {}   // arma travada → quantas vezes foi achada
+  };
+}
 
 function saveInicial(agora) {
   return {
     versao: SAVE_VERSION, credits: 0, owned: { falcao: true }, cleared: [false, false, false],
-    meta: { dmg: 0, hp: 0, rate: 0, magnet: 0 }, lastSeen: agora
+    meta: { dmg: 0, hp: 0, rate: 0, magnet: 0 }, lastSeen: agora,
+    combos: [], conquistas: {}, stats: statsIniciais()
   };
 }
+const _obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+const _num = (v) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0);
 
 // Número inteiro, nunca negativo; qualquer outra coisa vira 0
 function inteiroPositivo(v) {
@@ -35,6 +50,20 @@ function corrigirSave(bruto, navesValidas, agora) {
 
   const meta = bruto.meta && typeof bruto.meta === 'object' ? bruto.meta : {};
   Object.keys(s.meta).forEach((k) => { s.meta[k] = inteiroPositivo(meta[k]); });
+
+  // combos descobertos: lista de ids de arma, sem repetir
+  s.combos = Array.isArray(bruto.combos) ? [...new Set(bruto.combos.filter((c) => typeof c === 'string'))] : [];
+  // conquistas: id → momento em que foi desbloqueada
+  Object.entries(_obj(bruto.conquistas)).forEach(([k, v]) => { if (_num(v)) s.conquistas[k] = v; });
+  // estatísticas
+  const st = _obj(bruto.stats);
+  ['abates', 'tempoTotal', 'subchefes', 'chefes', 'nivelMax', 'maiorSemDano'].forEach((k) => { s.stats[k] = _num(st[k]); });
+  Object.entries(_obj(st.melhorTempo)).forEach(([k, v]) => { if (_num(v)) s.stats.melhorTempo[k] = v; });
+  Object.entries(_obj(st.vitorias)).forEach(([k, v]) => { if (v === true) s.stats.vitorias[k] = true; });
+  Object.entries(_obj(st.locais)).forEach(([k, v]) => {
+    if (Array.isArray(v)) s.stats.locais[k] = [...new Set(v.filter((i) => Number.isInteger(i) && i >= 0))];
+  });
+  Object.entries(_obj(st.armasAchadas)).forEach(([k, v]) => { const n = inteiroPositivo(v); if (n) s.stats.armasAchadas[k] = n; });
 
   const visto = bruto.lastSeen;
   s.lastSeen = typeof visto === 'number' && Number.isFinite(visto) && visto <= agora ? visto : agora;
@@ -91,5 +120,5 @@ function gravarSave(storage, save, agora) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { SAVE_KEY, SAVE_VERSION, saveInicial, corrigirSave, lerSave, gravarSave };
+  module.exports = { SAVE_KEY, SAVE_VERSION, saveInicial, statsIniciais, corrigirSave, lerSave, gravarSave };
 }

@@ -30,6 +30,10 @@ class HangarScene extends Phaser.Scene {
       fontFamily: 'Arial Black, Arial', fontSize: '34px', color: '#fde047', stroke: '#7c2d12', strokeThickness: 6
     }).setOrigin(0.5));
     this.keep(this.add.text(W / 2, 74, 'Créditos: ' + fmt(SAVE.credits), { fontFamily: 'Arial', fontSize: '20px', color: '#a5f3fc' }).setOrigin(0.5));
+    // códex (armas, itens e combos descobertos) e conquistas
+    const nCq = CONQUISTAS.filter((c) => SAVE.conquistas[c.id]).length;
+    this.keep(makeButton(this, 92, 30, 150, 30, 'CÓDEX', () => abrirCodex(this), { size: 14, color: 0x312e81, stroke: 0x818cf8 }));
+    this.keep(makeButton(this, 92, 68, 150, 30, 'CONQUISTAS ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(this), { size: 13, color: 0x14532d, stroke: 0x4ade80 }));
 
     SHIPS.forEach((s, i) => {
       const x = 230 + i * 250, y = 225;
