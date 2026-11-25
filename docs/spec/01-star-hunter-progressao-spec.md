@@ -25,9 +25,15 @@ Itens do plano que vieram sem marcação (seções 5 e 6) foram marcados como [S
   - A recompensa de cada chefe é um baú. [SUPOSIÇÃO]
 - **RN-05** Subchefes em horários fixos a cada 3 min (3:00, 6:00 … 27:00). Cada um solta um baú. [DECIDIDO]
   - Não há subchefe aos 30:00, porque é a hora da nave-mãe. [SUPOSIÇÃO]
+- **RN-47** Com o modo automático ligado, chefes e nave-mãe ficam "detectados" e só aparecem quando o jogador desliga o automático. A vitória só conta com o automático desligado. Subchefes vêm no horário mesmo com o automático ligado. [DECIDIDO em 25/11/2026]
+  - Um chefe não derrotado continua na partida quando chega o próximo. [SUPOSIÇÃO]
+  - A nave-mãe não pode ser destruída. A partida termina como vitória quando ela destrói o jogador ou depois de 15 s. [SUPOSIÇÃO]
 
 ### 2.2 Curva de dificuldade
 - **RN-06** A partida começa com poucos inimigos e aumenta aos poucos, sem ficar fácil demais. [DECIDIDO]
+  - Nos primeiros ~10 min os inimigos vêm em **ondas fechadas**: cada onda tem um número fixo de inimigos e há um respiro entre elas. A próxima onda vem quando o jogador mata a maioria ou depois de um tempo máximo. Depois dos ~10 min, vira fluxo contínuo crescente. Motivo: na v0.2 o fluxo sem fim no começo fazia o jogador morrer antes de 2:30 e desistir. [DECIDIDO em 25/11/2026]
+  - Cercos e enxames só começam depois da fase inicial de ondas (a partir de ~5 min). [SUPOSIÇÃO]
+- **RN-46** Meteoros bem perto da nave (até ~150 px) são atacados como se fossem inimigos; meteoros mais longe só quando não há inimigo por perto. Vale para todas as armas, inclusive mísseis. [DECIDIDO em 25/11/2026; distância de 150 px é SUPOSIÇÃO]
 - **RN-07** A curva fica numa tabela por minuto (quantidade, ritmo e tipos), separada da lógica. [SUPOSIÇÃO]
 - **RN-08** Alvo de equilíbrio: quem escolhe bem as cartas chega aos 30 min com esforço; quem não melhora a nave morre entre 10 e 15 min. [SUPOSIÇÃO]
 
@@ -159,9 +165,12 @@ Cada entrega deixa o jogo jogável e testável sozinha.
 
 ### E2 — Partida de 30 minutos
 - Relógio até 30:00; subchefes a cada 3 min com baú; chefes aos 10, 20 e 25 com baú; nave-mãe aos 30:00; vitória libera próxima galáxia e nave.
-- Curva de ondas em tabela por minuto (ainda com os 3 inimigos atuais).
+- Curva em tabela por minuto: ondas fechadas nos primeiros ~10 min, fluxo depois (ainda com os 3 inimigos atuais).
+- Chefes e nave-mãe esperam o automático desligar.
+- Meteoros perto da nave passam a ser atacados.
 - Pausa básica (botão, ESC/P, troca de aba) que congela o tempo.
-- **Cobre:** RN-01 a RN-08, RN-31, RN-33.
+- Modo de teste ganha o botão "próximo evento".
+- **Cobre:** RN-01 a RN-08, RN-31, RN-33, RN-46, RN-47.
 - **Valor sozinha:** acaba a dor principal (partida curta demais).
 
 ### E3 — Mapa que dá a volta

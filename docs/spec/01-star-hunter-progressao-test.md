@@ -24,6 +24,9 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 - **CA-12** Está pronto quando dá para mudar a quantidade de inimigos de um minuto mexendo só na tabela.
 - **CA-13** Está pronto quando o jogo pausa pelo botão, pela tecla ESC ou P e ao trocar de aba, e o relógio não anda durante a pausa.
 - **CA-14** Está pronto quando ficar em outra aba não conta tempo de partida nem rendimento do automático.
+- **CA-40** Está pronto quando, nos primeiros minutos, os inimigos chegam em ondas com um respiro entre elas, e um jogador sem melhorias passa de 2:30 sem dificuldade exagerada.
+- **CA-41** Está pronto quando um meteoro colado na nave é atacado mesmo com inimigos por perto, por qualquer arma (inclusive os mísseis do Titã).
+- **CA-42** Está pronto quando, com o automático ligado, o chefe e a nave-mãe só aparecem depois que o jogador desliga o automático, e os subchefes aparecem no horário mesmo assim.
 
 ### E3 — Mapa que dá a volta
 - **CA-15** Está pronto quando não existe borda: voando reto para qualquer lado, a nave reaparece do outro lado sem salto visível.
@@ -92,6 +95,15 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | CT-17 | Partida em 5:00 | Apertar ESC, esperar 1 min, voltar | Relógio continua em 5:00 |
 | CT-18 | Partida em 5:00 | Trocar de aba por 2 min e voltar | Jogo pausado; relógio em 5:00; automático não rendeu esses 2 min |
 | CT-19 | Partida em andamento | Apertar P duas vezes rápido | Pausa e despausa uma vez cada, sem travar |
+| CT-62 | Início da partida (0:00 a 10:00) | Observar os inimigos vivos | Chegam em ondas de tamanho fixo pela tabela; entre ondas há respiro; nunca mais vivos que o teto da onda |
+| CT-63 | Onda em andamento | Matar a maioria dos inimigos | A próxima onda começa depois do respiro, sem esperar o tempo máximo |
+| CT-64 | Onda em andamento | Não matar ninguém | A próxima onda vem quando acaba o tempo máximo |
+| CT-65 | Minuto 10 em diante | Observar | Inimigos chegam em fluxo contínuo, no ritmo da tabela |
+| CT-66 | Nave parada com meteoro a 80 px e inimigos a 300 px | Esperar os tiros | O meteoro é atingido e quebra |
+| CT-67 | Titã (mísseis) com meteoro colado e inimigos longe | Esperar os mísseis | Os mísseis acertam o meteoro |
+| CT-68 | Automático ligado, modo teste | Pular para 9:55 e esperar até 10:05 | Chefe não aparece; aviso "desligue o AUTO"; subchefe dos 9:00 já apareceu |
+| CT-69 | Automático ligado depois dos 10:00 | Desligar o automático | Chefe aparece |
+| CT-70 | Automático ligado aos 30:00 | Esperar | Nave-mãe não chega; vitória não conta até desligar o automático |
 
 ### E3
 | ID | Situação | Ação | Resultado esperado |
@@ -236,6 +248,9 @@ Para testar eventos de 10, 20 e 30 min sem jogar meia hora, use o modo de teste 
 | RN-43 | CA-03 | CT-04 |
 | RN-44 | CA-39 | CT-56, CT-60, CT-61 |
 | RN-45 | CA-04 | CT-05, CT-06 |
+| RN-06 (ondas) | CA-40 | CT-62, CT-63, CT-64, CT-65 |
+| RN-46 | CA-41 | CT-66, CT-67 |
+| RN-47 | CA-42 | CT-68, CT-69, CT-70 |
 
 ### Lacunas
 - **RN-08 (alvo de equilíbrio)** não tem teste automático: só se prova jogando. Ela é medida pela métrica de sucesso (3 partidas por galáxia, mediana entre 15 e 30 min).
