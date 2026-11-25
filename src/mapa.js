@@ -28,7 +28,7 @@ function genPOIs(gi) {
       const p = { type: t.type, name: t.nome, escala: 0.85 + rnd() * 0.4, variante: i };
       if (t.type === 'planet') {
         const base = gal.planetNames[i % 2];
-        p.name = 'Planeta ' + (i < 2 ? base : base + ' ' + ROMANOS[Math.floor(i / 2) - 1]);
+        p.name = (typeof tx === 'function' ? tx('Planeta') : 'Planeta') + ' ' + (i < 2 ? base : base + ' ' + ROMANOS[Math.floor(i / 2) - 1]);
         if (i < 2) p.weapon = hidden[i];
       }
       if (t.type === 'relic') { p.name = gal.relic; p.escala = 1; }

@@ -292,28 +292,32 @@ class GameScene extends Phaser.Scene {
     if (o.kind === 'weapon') {
       const d = WEAPONS[o.id];
       icone = iconeDe(o.id); nome = d.name; efeito = d.desc[o.level - 1]; nivel = o.level; max = MAX_WEAPON_LEVEL;
-      etiqueta = d.poder ? 'PODER DA NAVE' : o.level === 1 ? 'ARMA NOVA' : 'ARMA';
+      etiqueta = d.poder ? tx('PODER DA NAVE') : o.level === 1 ? tx('ARMA NOVA') : tx('ARMA');
       cor = d.poder ? 0x422006 : 0x1e1b4b; borda = d.poder ? 0xfacc15 : 0x818cf8;
     } else if (o.kind === 'passive') {
       const d = PASSIVES[o.id];
       icone = iconeDe(o.id); nome = d.name; efeito = d.desc; nivel = o.level; max = d.max;
-      etiqueta = o.level === 1 ? 'ITEM NOVO' : 'ITEM'; cor = 0x042f2e; borda = 0x2dd4bf;
+      etiqueta = o.level === 1 ? tx('ITEM NOVO') : tx('ITEM'); cor = 0x042f2e; borda = 0x2dd4bf;
     } else if (o.kind === 'sobrecarga') {
       const d = SOBRECARGAS[o.id];
-      icone = iconeDe(d.icone); nome = d.nome; efeito = d.desc + '\n(nível ' + o.level + ')';
-      etiqueta = 'SOBRECARGA'; cor = 0x3b0764; borda = 0xe879f9;
+      icone = iconeDe(d.icone); nome = d.nome; efeito = d.desc + '\n' + tx('(nível {n})', { n: o.level });
+      etiqueta = tx('SOBRECARGA'); cor = 0x3b0764; borda = 0xe879f9;
     } else if (o.kind === 'heal') {
-      icone = 'heal'; escala = 2.6; nome = 'Kit de Reparo'; efeito = '+30% de vida'; etiqueta = 'CURA';
+      icone = 'heal'; escala = 2.6; nome = tx('Kit de Reparo'); efeito = tx('+30% de vida'); etiqueta = tx('CURA');
     } else {
-      icone = 'coin'; escala = 2.6; nome = 'Créditos'; efeito = '+' + fmt(25 * this.gal.rewardMult); etiqueta = 'BÔNUS';
+      icone = 'coin'; escala = 2.6; nome = tx('Créditos'); efeito = '+' + fmt(25 * this.gal.rewardMult); etiqueta = tx('BÔNUS');
     }
     const btn = makeButton(this, x, y, 220, 270, '', () => this.modalPick(i), { fixed: true, depth: D, color: cor, stroke: borda });
     const parts = [btn];
     parts.push(fixo(this.add.text(x - 98, y - 125, String(i + 1), { fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8', fontStyle: 'bold' })));
     parts.push(fixo(this.add.text(x, y - 112, etiqueta, { fontFamily: 'Arial', fontSize: '12px', color: '#fde68a', fontStyle: 'bold' }).setOrigin(0.5)));
     parts.push(fixo(this.add.image(x, y - 45, icone).setScale(escala)));
-    parts.push(fixo(this.add.text(x, y + 22, nome, { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: 200 } }).setOrigin(0.5)));
-    parts.push(fixo(this.add.text(x, y + 58, efeito, { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1', align: 'center', wordWrap: { width: 196 } }).setOrigin(0.5)));
+    // nome longo (ex.: em francês ou alemão) quebra em 2 linhas: a descrição desce junto
+    const txtNome = fixo(this.add.text(x, y + 12, nome, { fontFamily: 'Arial', fontSize: '17px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: 200 } }).setOrigin(0.5, 0));
+    parts.push(txtNome);
+    const txtEfeito = fixo(this.add.text(x, y + 12 + txtNome.height + 10, efeito, { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1', align: 'center', wordWrap: { width: 196 } }).setOrigin(0.5, 0));
+    if (txtEfeito.y + txtEfeito.height > y + 98) txtEfeito.setFontSize(12);
+    parts.push(txtEfeito);
     // quadradinhos de nível: cheios até o nível que a carta dá
     for (let k = 0; k < max; k++) {
       const px = x + (k - (max - 1) / 2) * 18;
@@ -377,10 +381,10 @@ class GameScene extends Phaser.Scene {
     const parts = [
       this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6).setScrollFactor(0).setDepth(D).setInteractive(),
       this.add.rectangle(W / 2, H / 2, 380, 330, 0x0f172a).setStrokeStyle(3, 0x60a5fa).setScrollFactor(0).setDepth(D + 1),
-      this.add.text(W / 2, H / 2 - 135, 'PAUSADO', {
+      this.add.text(W / 2, H / 2 - 135, tx('PAUSADO'), {
         fontFamily: 'Arial Black, Arial', fontSize: '30px', color: '#a5f3fc', stroke: '#000000', strokeThickness: 5
       }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2),
-      this.add.text(W / 2, H / 2 - 105, 'O relógio da partida está parado. ESC ou P para continuar.', {
+      this.add.text(W / 2, H / 2 - 105, tx('O relógio da partida está parado. ESC ou P para continuar.'), {
         fontFamily: 'Arial', fontSize: '12px', color: '#cbd5e1', align: 'center'
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(D + 2)
     ];
@@ -389,13 +393,13 @@ class GameScene extends Phaser.Scene {
       parts.push(b.bg, b.txt);
       return b;
     };
-    botao(H / 2 - 50, 'CONTINUAR', () => this.fecharPausa(), 0x166534, 0x4ade80);
-    botao(H / 2 - 2, 'CÓDEX', () => {
+    botao(H / 2 - 50, tx('CONTINUAR'), () => this.fecharPausa(), 0x166534, 0x4ade80);
+    botao(H / 2 - 2, tx('CÓDEX'), () => {
       this.codexAberto = true;
       abrirCodex(this, () => { this.codexAberto = false; });
     });
     // recolher nave também na pausa (RN-32)
-    botao(H / 2 + 46, 'RECOLHER NAVE', () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
+    botao(H / 2 + 46, tx('RECOLHER NAVE'), () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
     this.menuPausa = { parts };
   }
   fecharPausa() {
@@ -419,7 +423,7 @@ class GameScene extends Phaser.Scene {
     this.xpFill = this.add.rectangle(0, H - 10, W, 10, 0x22d3ee).setOrigin(0).setScrollFactor(0).setDepth(D + 1);
 
     makeButton(this, W - 30, 26, 40, 30, 'II', () => this.alternarPausa(), { fixed: true, depth: D, size: 15 });
-    makeButton(this, W - 140, 26, 160, 30, 'RECOLHER NAVE', () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
+    makeButton(this, W - 140, 26, 160, 30, tx('RECOLHER NAVE'), () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
 
     this.bossBarBg = this.add.rectangle(W / 2, 54, 400, 14, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setVisible(false);
     this.bossBar = this.add.rectangle(W / 2 - 198, 54, 396, 10, 0xa855f7).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false);
@@ -429,7 +433,7 @@ class GameScene extends Phaser.Scene {
     this.mmSize = 150; this.mmX = W - 90 - 75; this.mmY = 86;
     this.add.rectangle(this.mmX, this.mmY, this.mmSize, this.mmSize, 0x020617, 0.92).setOrigin(0).setStrokeStyle(2, 0x64748b).setScrollFactor(0).setDepth(D);
     this.minimap = this.add.graphics().setScrollFactor(0).setDepth(D + 1);
-    this.add.text(this.mmX + this.mmSize / 2, this.mmY + this.mmSize + 4, 'MAPA', { fontFamily: 'Arial', fontSize: '10px', color: '#94a3b8' }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(D);
+    this.add.text(this.mmX + this.mmSize / 2, this.mmY + this.mmSize + 4, tx('MAPA'), { fontFamily: 'Arial', fontSize: '10px', color: '#94a3b8' }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(D);
 
     this.invItems = [];
   }
@@ -473,7 +477,7 @@ class GameScene extends Phaser.Scene {
   updateHUD() {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
     this.hpText.setText(Math.ceil(Math.max(0, this.hp)) + ' / ' + Math.ceil(this.mods.maxHp));
-    this.infoText.setText('Nível ' + this.level + '   Abates ' + this.kills + '   Créditos +' + fmt(this.runCredits));
+    this.infoText.setText(tx('Nível {n}   Abates {a}   Créditos +{c}', { n: this.level, a: this.kills, c: fmt(this.runCredits) }));
     this.timeText.setText(fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
     this.xpFill.setScale(Math.min(1, this.xp / this.xpNext), 1);
     if (this.boss && !this.boss.active) this.boss = this.chefeVivo();
@@ -486,9 +490,9 @@ class GameScene extends Phaser.Scene {
 
   // Linha de aviso no rodapé: o que vem a seguir
   textoDica() {
-    if (this.vitoriaRegistrada) return 'GALÁXIA CONQUISTADA! Resista à nave-mãe o quanto puder.';
+    if (this.vitoriaRegistrada) return tx('GALÁXIA CONQUISTADA! Resista à nave-mãe o quanto puder.');
     const p = proximoEvento(this.elapsed);
-    return p ? p.nome + ' em ' + fmtTime(Math.max(0, p.t - this.elapsed)) : '';
+    return p ? tx('{evento} em {tempo}', { evento: tx(p.nome), tempo: fmtTime(Math.max(0, p.t - this.elapsed)) }) : '';
   }
 
   drawMinimap() {
@@ -706,7 +710,7 @@ class GameScene extends Phaser.Scene {
       const a = i / n * Math.PI * 2;
       this.spawnEnemy('bug', cx + Math.cos(a) * 480, cy + Math.sin(a) * 480);
     }
-    this.banner('CERCO!', '#fca5a5');
+    this.banner(tx('CERCO!'), '#fca5a5');
   }
 
   // enxame que atravessa a tela em linha reta (como os morcegos do VS)
@@ -719,7 +723,7 @@ class GameScene extends Phaser.Scene {
       const e = this.spawnEnemy('diamond', sx - diry * off + (Math.random() - 0.5) * 60, sy + dirx * off + (Math.random() - 0.5) * 60);
       if (e) { e.straight = { x: dirx * 240, y: diry * 240 }; e.life = 7; }
     }
-    this.banner('ENXAME!', '#fde047');
+    this.banner(tx('ENXAME!'), '#fde047');
   }
 
   spawnElite(x, y) {
@@ -736,7 +740,7 @@ class GameScene extends Phaser.Scene {
     e.speedV *= 0.85;
     e.damage *= 2;
     e.reward = 40; e.xpVal = 10; e.hitR = INIMIGOS[tk].radius * 2.2;
-    this.banner('SUBCHEFE À VISTA!', '#fb923c');
+    this.banner(tx('SUBCHEFE À VISTA!'), '#fb923c');
   }
   forceSpawn(tk, x, y) {
     let victim = null;
@@ -767,7 +771,7 @@ class GameScene extends Phaser.Scene {
     e.flash = 0; e.orbHit = 0; e.kbT = 0; e.flank = 0; e.shootT = 2; e.burst = 0;
     this.boss = e;
     this.bossBar.setFillStyle(hexToInt(this.gal.alien.b));
-    this.banner('ALERTA: CHEFE DA GALÁXIA ' + ((i || 0) + 1) + '/' + EVENTOS.chefes.length + '!', '#f87171');
+    this.banner(tx('ALERTA: CHEFE DA GALÁXIA {n}/{total}!', { n: (i || 0) + 1, total: EVENTOS.chefes.length }), '#f87171');
   }
 
   // Nave-mãe aos 30:00: registra a vitória e vem destruir o jogador (RN-01, RN-02)
@@ -788,7 +792,7 @@ class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, m, () => { this.invuln = 0; this.hurt(99999); });
     this.cameras.main.flash(500, 255, 255, 255);
     this.cameras.main.shake(600, 0.01);
-    this.banner('A NAVE-MÃE CHEGOU! GALÁXIA CONQUISTADA!', '#86efac');
+    this.banner(tx('A NAVE-MÃE CHEGOU! GALÁXIA CONQUISTADA!'), '#86efac');
     this.time.delayedCall(EVENTOS.naveMaeDuracao * 1000, () => this.endRun('victory', this.primeiraVitoria));
   }
   updateNaveMae(dt) {
@@ -1413,9 +1417,9 @@ class GameScene extends Phaser.Scene {
       if (p.label) p.label.destroy();
       this.tweens.killTweensOf(p);
       p.destroy();
-      if (t === 'heal') { this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3); this.floatText(px, py, '+VIDA', '#f87171'); }
-      else if (t === 'coin') { tocarSom(this, 'moeda'); const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, '+' + fmt(v) + ' créditos', '#facc15'); }
-      else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, 'ÍMÃ TOTAL!', '#22d3ee'); }
+      if (t === 'heal') { this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.maxHp * 0.3); this.floatText(px, py, tx('+VIDA'), '#f87171'); }
+      else if (t === 'coin') { tocarSom(this, 'moeda'); const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, tx('+{v} créditos', { v: fmt(v) }), '#facc15'); }
+      else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, tx('ÍMÃ TOTAL!'), '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
       else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
       else if (t === 'weapon') this.contarArmaAchada(extra);
@@ -1431,15 +1435,15 @@ class GameScene extends Phaser.Scene {
     const list = [];
     this.enemies.children.iterate((e) => { if (e && e.active && Math.hypot(e.x - px, e.y - py) < 650) list.push(e); });
     list.forEach((e) => this.damageTarget(e, e.isBoss || e.isElite ? e.maxHp * 0.25 : e.hp + 1));
-    this.floatText(px, py, 'BOMBA!', '#fb923c');
+    this.floatText(px, py, tx('BOMBA!'), '#fb923c');
   }
 
   // Arma travada achada: soma no save; na 3ª vez passa a aparecer nas cartas (RN-35)
   contarArmaAchada(id) {
     if (!WEAPONS[id].hidden || armaLiberada(SAVE, id)) return;
     const n = registrarArmaAchada(SAVE, id);
-    if (armaLiberada(SAVE, id)) this.banner(WEAPONS[id].name + ' agora aparece nas cartas!', '#86efac');
-    else this.floatText(this.player.x, this.player.y - 20, WEAPONS[id].name + ' achada ' + n + '/' + ACHADOS_PARA_LIBERAR, '#f0abfc');
+    if (armaLiberada(SAVE, id)) this.banner(tx('{arma} agora aparece nas cartas!', { arma: WEAPONS[id].name }), '#86efac');
+    else this.floatText(this.player.x, this.player.y - 20, tx('{arma} achada {n}/{total}', { arma: WEAPONS[id].name, n, total: ACHADOS_PARA_LIBERAR }), '#f0abfc');
     writeSave(SAVE);
   }
 
@@ -1468,7 +1472,7 @@ class GameScene extends Phaser.Scene {
     const x = W - 150, y = 280, D = 160, partes = [];
     const fixo = (o) => { partes.push(o.setScrollFactor(0).setDepth(D)); return o; };
     fixo(this.add.rectangle(x, y, 270, 62, 0x14532d, 0.92).setStrokeStyle(2, 0x4ade80));
-    fixo(this.add.text(x, y - 18, 'CONQUISTA!', { fontFamily: 'Arial Black, Arial', fontSize: '13px', color: '#fde047' }).setOrigin(0.5));
+    fixo(this.add.text(x, y - 18, tx('CONQUISTA!'), { fontFamily: 'Arial Black, Arial', fontSize: '13px', color: '#fde047' }).setOrigin(0.5));
     fixo(this.add.text(x, y, c.nome, { fontFamily: 'Arial', fontSize: '14px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
     const nomeArma = c.premio.arma ? WEAPONS[c.premio.arma].name : '';
     fixo(this.add.text(x, y + 18, textoDoPremio(c.premio, nomeArma), { fontFamily: 'Arial', fontSize: '11px', color: '#bbf7d0' }).setOrigin(0.5));
@@ -1495,7 +1499,7 @@ class GameScene extends Phaser.Scene {
         p.discovered = true;
         const ja = SAVE.stats.locais[this.gi] || (SAVE.stats.locais[this.gi] = []);
         if (!ja.includes(p.indice)) ja.push(p.indice);   // conta para a conquista de explorar
-        this.banner('DESCOBERTO: ' + p.name, '#a5f3fc');
+        this.banner(tx('DESCOBERTO: {nome}', { nome: p.name }), '#a5f3fc');
         if (p.type === 'nest') this.triggerNest(p);
         if (p.type === 'beacon') this.acenderFarol(p);
       }
@@ -1507,7 +1511,7 @@ class GameScene extends Phaser.Scene {
           this.scanBar.fillStyle(0x000000, 0.7).fillRect(p.x - 50, barY, 100, 10);
           this.scanBar.fillStyle(0x22d3ee, 1).fillRect(p.x - 48, barY + 2, 96 * Math.min(1, p.scan / 1.5), 6);
           if (p.scan >= 1.5) {
-            p.done = true; p.label.setText(p.name + ' (explorado)').setColor('#94a3b8');
+            p.done = true; p.label.setText(tx('{nome} (explorado)', { nome: p.name })).setColor('#94a3b8');
             if (p.weapon && !armaLiberada(SAVE, p.weapon)) this.contarArmaAchada(p.weapon);   // só a pista: a arma vem nas cartas (RN-55)
             else this.recompensaDeLocal(p, p.type === 'planet' ? 14 : 8, p.type === 'planet' ? 120 : 70);
           }
@@ -1515,26 +1519,26 @@ class GameScene extends Phaser.Scene {
       }
       if (p.type === 'cache' && !p.done && d < 60) {
         p.done = true; p.img.setAlpha(0.35);
-        p.label.setText(p.name + ' (vazio)').setColor('#94a3b8');
+        p.label.setText(tx('{nome} (vazio)', { nome: p.name })).setColor('#94a3b8');
         ['heal', 'magnet', 'bomb'].forEach((t, i) => {
           const a = -Math.PI / 2 + (i - 1) * 0.9;
           this.dropPickup(p.x + Math.cos(a) * 70, p.y + Math.sin(a) * 70, t);
         });
-        this.banner('SUPRIMENTOS!', '#86efac');
+        this.banner(tx('SUPRIMENTOS!'), '#86efac');
       }
       if (p.type === 'station') {
         p.cooldown -= dt;
-        p.label.setText(p.cooldown > 0 ? p.name + ' (' + Math.ceil(p.cooldown) + 's)' : p.name + ' — PRONTA');
+        p.label.setText(p.cooldown > 0 ? p.name + ' (' + Math.ceil(p.cooldown) + 's)' : tx('{nome} — PRONTA', { nome: p.name }));
         if (d < 110 && p.cooldown <= 0 && this.hp < this.mods.maxHp) {
           this.hp = this.mods.maxHp; p.cooldown = 90;
-          this.floatText(px, py, 'REPARO COMPLETO!', '#4ade80');
+          this.floatText(px, py, tx('REPARO COMPLETO!'), '#4ade80');
         }
       }
       if (p.type === 'relic' && !p.done && d < 45) {
         p.done = true; p.img.setVisible(false);
-        p.label.setText(p.name + ' (coletada)').setColor('#94a3b8');
+        p.label.setText(tx('{nome} (coletada)', { nome: p.name })).setColor('#94a3b8');
         this.xpMult *= 1.3; this.creditMult *= 1.3;
-        this.banner('RELÍQUIA: ' + p.name + '\n+30% XP e créditos nesta partida', '#facc15');
+        this.banner(tx('RELÍQUIA: {nome}', { nome: p.name }) + '\n' + tx('+30% XP e créditos nesta partida'), '#facc15');
       }
       if (p.type === 'blackhole') this.updateBlackHole(p, dt, d);
     });
@@ -1545,7 +1549,7 @@ class GameScene extends Phaser.Scene {
     const perto = this.pois.filter((o) => !o.discovered && !o.revelado)
       .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y)).slice(0, 3);
     perto.forEach((o) => { o.revelado = true; });
-    if (perto.length) this.banner('FAROL: ' + perto.length + ' locais marcados no mapa', '#38bdf8');
+    if (perto.length) this.banner(tx('FAROL: {n} locais marcados no mapa', { n: perto.length }), '#38bdf8');
   }
   // Planeta sem arma ou destroços: solta gemas em volta e dá créditos
   recompensaDeLocal(p, gemas, creditos) {
@@ -1555,13 +1559,13 @@ class GameScene extends Phaser.Scene {
     }
     const v = creditos * this.gal.rewardMult * this.creditMult;
     this.runCredits += v;
-    this.floatText(this.player.x, this.player.y, '+' + fmt(v) + ' créditos', '#facc15');
+    this.floatText(this.player.x, this.player.y, tx('+{v} créditos', { v: fmt(v) }), '#facc15');
   }
   triggerNest(p) {
     p.done = true;
     this.spawnElite(p.x + 60, p.y);
     for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; this.spawnEnemy('bug', p.x + Math.cos(a) * 120, p.y + Math.sin(a) * 120); }
-    this.banner('O NINHO DESPERTOU!', '#f87171');
+    this.banner(tx('O NINHO DESPERTOU!'), '#f87171');
   }
   // Buraco negro: puxa tudo; o centro machuca. Cada inimigo engolido faz ele crescer
   // (puxa de mais longe e o centro fica maior) e não dá XP nem créditos.
@@ -1642,7 +1646,7 @@ class GameScene extends Phaser.Scene {
     if (!options.length) options = [{ kind: 'heal' }, { kind: 'gold' }];
     const parts = [];
     parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(200).setInteractive());
-    parts.push(this.add.text(W / 2, 80, 'NÍVEL ' + (this.level - this.pendingLevels) + '!  Escolha uma melhoria', {
+    parts.push(this.add.text(W / 2, 80, tx('NÍVEL {n}!  Escolha uma melhoria', { n: this.level - this.pendingLevels }), {
       fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#fde047', stroke: '#000000', strokeThickness: 5
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     const n = options.length;
@@ -1673,8 +1677,8 @@ class GameScene extends Phaser.Scene {
     const evo = this.evolvable();
     const D = 200, parts = [], fixo = (o, d) => { parts.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
     fixo(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
-    const titulo = fixo(this.add.text(W / 2, 92, 'ESCOLHA UM BAÚ', { fontFamily: 'Arial Black, Arial', fontSize: '28px', color: '#fde047', stroke: '#000000', strokeThickness: 6 }).setOrigin(0.5), 2);
-    const subtitulo = fixo(this.add.text(W / 2, 128, 'O que tem dentro é surpresa', { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1' }).setOrigin(0.5), 2);
+    const titulo = fixo(this.add.text(W / 2, 92, tx('ESCOLHA UM BAÚ'), { fontFamily: 'Arial Black, Arial', fontSize: '28px', color: '#fde047', stroke: '#000000', strokeThickness: 6 }).setOrigin(0.5), 2);
+    const subtitulo = fixo(this.add.text(W / 2, 128, tx('O que tem dentro é surpresa'), { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1' }).setOrigin(0.5), 2);
     const baus = [0, 1, 2].map((i) => {
       const x = W / 2 + (i - 1) * 230, y = H / 2 + 20;
       const brilho = fixo(this.add.circle(x, y, 70, 0xfacc15, 0.12), 1);
@@ -1712,7 +1716,7 @@ class GameScene extends Phaser.Scene {
     if (!m || m.kind !== 'chest' || m.fase === 'revelado') return;
     const c = m.conteudos[i], fixo = m.fixo;
     const CORES = { comum: '#cbd5e1', raro: '#60a5fa', epico: '#e879f9', combo: '#fde047' };
-    const NOMES = { comum: 'COMUM', raro: 'RARO', epico: 'ÉPICO', combo: 'COMBO!' };
+    const NOMES = { comum: tx('COMUM'), raro: tx('RARO'), epico: tx('ÉPICO'), combo: tx('COMBO!') };
     const ganhos = [];   // { icone, texto }
     let raridade = c.raridade;
     if (m.combo) {
@@ -1731,27 +1735,27 @@ class GameScene extends Phaser.Scene {
         if (!pool.length) pool = this.opcoesSobrecarga();
         const o = pool.length ? Phaser.Utils.Array.GetRandom(pool) : { kind: 'gold' };
         this.applyOption(o);
-        if (o.kind === 'weapon') ganhos.push({ icone: iconeDe(o.id), texto: WEAPONS[o.id].name + ' Nv ' + o.level });
-        else if (o.kind === 'passive') ganhos.push({ icone: iconeDe(o.id), texto: PASSIVES[o.id].name + ' Nv ' + o.level });
+        if (o.kind === 'weapon') ganhos.push({ icone: iconeDe(o.id), texto: tx('{nome} Nv {n}', { nome: WEAPONS[o.id].name, n: o.level }) });
+        else if (o.kind === 'passive') ganhos.push({ icone: iconeDe(o.id), texto: tx('{nome} Nv {n}', { nome: PASSIVES[o.id].name, n: o.level }) });
         else if (o.kind === 'sobrecarga') ganhos.push({ icone: iconeDe(SOBRECARGAS[o.id].icone), texto: SOBRECARGAS[o.id].nome + ' ' + o.level });
-        else ganhos.push({ icone: 'coin', texto: '+' + fmt(25 * this.gal.rewardMult) + ' créditos' });
+        else ganhos.push({ icone: 'coin', texto: tx('+{v} créditos', { v: fmt(25 * this.gal.rewardMult) }) });
       }
       if (c.arma) {
         this.contarArmaAchada(c.arma);   // só a pista; a arma passa a sair nas cartas depois de 3 achados
-        ganhos.push({ icone: iconeDe(c.arma), texto: 'Pista: ' + WEAPONS[c.arma].name + ' ' + Math.min(ACHADOS_PARA_LIBERAR, (SAVE.stats.armasAchadas[c.arma] || 0)) + '/' + ACHADOS_PARA_LIBERAR });
+        ganhos.push({ icone: iconeDe(c.arma), texto: tx('Pista: {arma} {n}/{total}', { arma: WEAPONS[c.arma].name, n: Math.min(ACHADOS_PARA_LIBERAR, (SAVE.stats.armasAchadas[c.arma] || 0)), total: ACHADOS_PARA_LIBERAR }) });
       }
-      if (c.raridade === 'epico') { this.hp = this.mods.maxHp; ganhos.push({ icone: 'heal', texto: 'Vida cheia' }); }
+      if (c.raridade === 'epico') { this.hp = this.mods.maxHp; ganhos.push({ icone: 'heal', texto: tx('Vida cheia') }); }
       const cred = c.creditos * this.gal.rewardMult * this.creditMult;
       this.runCredits += cred;
-      ganhos.push({ icone: 'coin', texto: '+' + fmt(cred) + ' créditos' });
+      ganhos.push({ icone: 'coin', texto: tx('+{v} créditos', { v: fmt(cred) }) });
     }
     this.refreshInventory();
-    m.titulo.setText(raridade === 'combo' ? 'COMBO!' : 'BAÚ ABERTO!');
+    m.titulo.setText(raridade === 'combo' ? tx('COMBO!') : tx('BAÚ ABERTO!'));
     m.subtitulo.setText('');
     // raridade de cada baú (o escolhido em destaque; os outros mostram o que você deixou)
     m.baus.forEach((b, k) => {
       const r = k === i ? raridade : m.conteudos[k].raridade;
-      fixo(this.add.text(b.x, b.y - 75, (k === i ? '' : 'tinha: ') + NOMES[r], {
+      fixo(this.add.text(b.x, b.y - 75, (k === i ? '' : tx('tinha: ')) + NOMES[r], {
         fontFamily: 'Arial Black, Arial', fontSize: k === i ? '22px' : '13px', color: CORES[r], stroke: '#000000', strokeThickness: 4
       }).setOrigin(0.5), 3);
     });
@@ -1763,7 +1767,7 @@ class GameScene extends Phaser.Scene {
       [[W / 2 - 100, iconeDe(m.comboId)], [W / 2, iconeDe(d.evo)], [W / 2 + 100, iconeDe(m.comboId, true)]].forEach(([x, k]) =>
         fixo(this.add.image(x, y0 + 8, k).setDisplaySize(48, 48), 4));
       ['+', '='].forEach((t, k) => fixo(this.add.text(W / 2 - 50 + k * 100, y0 + 8, t, { fontFamily: 'Arial Black, Arial', fontSize: '26px', color: '#fde047' }).setOrigin(0.5), 4));
-      fixo(this.add.text(W / 2, y0 + 50, '★ ' + d.evoName + ' ★' + (m.comboNovo ? '   (COMBO DESCOBERTO! guardado no códex)' : ''), { fontFamily: 'Arial', fontSize: '15px', color: '#f5d0fe' }).setOrigin(0.5), 4);
+      fixo(this.add.text(W / 2, y0 + 50, '★ ' + d.evoName + ' ★' + (m.comboNovo ? '   ' + tx('(COMBO DESCOBERTO! guardado no códex)') : ''), { fontFamily: 'Arial', fontSize: '15px', color: '#f5d0fe' }).setOrigin(0.5), 4);
     } else {
       ganhos.forEach((g, k) => {
         const x = W / 2 + (k - (ganhos.length - 1) / 2) * 130;
@@ -1771,7 +1775,7 @@ class GameScene extends Phaser.Scene {
         fixo(this.add.text(x, y0 + 30, g.texto, { fontFamily: 'Arial', fontSize: '12px', color: '#ffffff', align: 'center', wordWrap: { width: 124 } }).setOrigin(0.5, 0), 4);
       });
     }
-    const btn = makeButton(this, W / 2, H - 28, 180, 34, 'CONTINUAR', () => this.modalPick(0), { fixed: true, depth: 205, color: 0x166534, stroke: 0x4ade80 });
+    const btn = makeButton(this, W / 2, H - 28, 180, 34, tx('CONTINUAR'), () => this.modalPick(0), { fixed: true, depth: 205, color: 0x166534, stroke: 0x4ade80 });
     m.parts.push(btn);
     m.fase = 'revelado';
   }
@@ -1813,7 +1817,7 @@ class GameScene extends Phaser.Scene {
     const bonus = c.creditos * this.gal.rewardMult;
     this.bonus += bonus; this.runCredits += bonus;
     this.cameras.main.flash(300, 255, 255, 255);
-    this.banner('CHEFE DERROTADO! +' + fmt(bonus) + ' créditos', '#86efac');
+    this.banner(tx('CHEFE DERROTADO! +{v} créditos', { v: fmt(bonus) }), '#86efac');
     this.boss = this.chefeVivo();
   }
 
@@ -1828,7 +1832,7 @@ class GameScene extends Phaser.Scene {
     this.atualizarProgresso();
     writeSave(SAVE);
 
-    const titles = { victory: 'GALÁXIA CONQUISTADA!', dead: 'NAVE DESTRUÍDA', retreat: 'MISSÃO ENCERRADA' };
+    const titles = { victory: tx('GALÁXIA CONQUISTADA!'), dead: tx('NAVE DESTRUÍDA'), retreat: tx('MISSÃO ENCERRADA') };
     const colors = { victory: '#86efac', dead: '#f87171', retreat: '#a5f3fc' };
     const D = 300;
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setInteractive();
@@ -1838,13 +1842,13 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2);
     const found = this.pois.filter((p) => p.discovered).length;
     const evolved = this.weapons.filter((w) => w.evolved).map((w) => WEAPONS[w.id].evoName);
-    let body = 'Tempo: ' + fmtTime(this.elapsed) + '   Abates: ' + this.kills + '   Nível: ' + this.level +
-      '\nLocais descobertos: ' + found + '/' + this.pois.length +
-      (evolved.length ? '\nCombos: ' + evolved.join(', ') : '') +
-      '\n\nCréditos ganhos: ' + fmt(this.runCredits);
-    if (reason === 'victory' && firstClear && SHIPS[this.gi + 1]) body += '\n\nNova nave disponível no hangar: ' + SHIPS[this.gi + 1].name + '!';
+    let body = tx('Tempo: {tempo}   Abates: {a}   Nível: {n}', { tempo: fmtTime(this.elapsed), a: this.kills, n: this.level }) +
+      '\n' + tx('Locais descobertos: {n}/{total}', { n: found, total: this.pois.length }) +
+      (evolved.length ? '\n' + tx('Combos: {lista}', { lista: evolved.join(', ') }) : '') +
+      '\n\n' + tx('Créditos ganhos: {v}', { v: fmt(this.runCredits) });
+    if (reason === 'victory' && firstClear && SHIPS[this.gi + 1]) body += '\n\n' + tx('Nova nave disponível no hangar: {nave}!', { nave: SHIPS[this.gi + 1].name });
     this.add.text(W / 2, H / 2 - 5, body, { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0', align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2);
-    makeButton(this, W / 2, H / 2 + 120, 220, 40, 'VOLTAR AO HANGAR', () => this.scene.start('Hangar'),
+    makeButton(this, W / 2, H / 2 + 120, 220, 40, tx('VOLTAR AO HANGAR'), () => this.scene.start('Hangar'),
       { fixed: true, depth: D + 3, color: 0x166534, stroke: 0x4ade80 });
   }
 }

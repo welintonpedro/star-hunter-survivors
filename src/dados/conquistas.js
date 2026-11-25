@@ -63,8 +63,9 @@ function maxTempo(s) {
 const NOMES_BONUS = { dano: 'dano', vida: 'vida máxima', regen: 'de vida por segundo', area: 'área',
   velocidade: 'velocidade', recarga: 'recarga mais rápida', coleta: 'alcance de coleta', xp: 'XP', creditos: 'créditos' };
 function textoDoPremio(p, nomeArma) {
-  if (p.tipo === 'arma') return (nomeArma || p.arma) + ' aparece nas cartas';
-  return Object.entries(p.bonus).map(([k, v]) => (k === 'regen' ? '+' + v + ' ' : '+' + Math.round(v * 100) + '% ') + NOMES_BONUS[k]).join(', ');
+  const _t = (typeof tx === 'function') ? tx : (s, v) => (v ? s.replace(/\{(\w+)\}/g, (m, k) => v[k]) : s);
+  if (p.tipo === 'arma') return _t('{arma} aparece nas cartas', { arma: nomeArma || p.arma });
+  return Object.entries(p.bonus).map(([k, v]) => (k === 'regen' ? '+' + v + ' ' : '+' + Math.round(v * 100) + '% ') + _t(NOMES_BONUS[k])).join(', ');
 }
 
 if (typeof module !== 'undefined') {

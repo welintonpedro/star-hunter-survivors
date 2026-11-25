@@ -35,6 +35,13 @@ async function abrirJogo(opcoes = {}) {
   });
   const pagina = await navegador.newPage();
   await pagina.setViewport({ width: 960, height: 540 });
+  // o navegador de teste "fala" português, como o dono (ok do dono em 25/11/2026);
+  // opcoes.idioma troca isso para testar a detecção automática de outros idiomas
+  const idioma = opcoes.idioma || 'pt-BR';
+  await pagina.evaluateOnNewDocument((l) => {
+    Object.defineProperty(navigator, 'language', { get: () => l });
+    Object.defineProperty(navigator, 'languages', { get: () => [l] });
+  }, idioma);
   const erros = [];
   pagina.on('pageerror', (e) => erros.push(String(e)));
   // "Failed to load resource" é registrado pelo evento 'response' abaixo, que diz qual arquivo faltou

@@ -26,6 +26,9 @@ teste esconde o bug.
 - Números de equilíbrio (ondas, inimigos, chefes,
   conquistas) ficam em tabelas separadas da lógica, para
   o dono ajustar sem mexer no código (RN-07).
+- Texto que o jogador vê passa por tx('texto em português') e precisa de tradução
+  nos 6 arquivos de src/idiomas/ (o teste idiomas.test.js aponta o que falta).
+  Não use t() como nome: t já é variável local em vários lugares (tempo, tipo).
 - O dono é leigo: explique em português simples o que
   mudou e como testar no navegador.
 
