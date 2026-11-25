@@ -817,9 +817,15 @@ class GameScene extends Phaser.Scene {
     grid.clear();
     const list = this.listaInimigos || (this.listaInimigos = []);
     list.length = 0;
+    const ppx = this.player.x, ppy = this.player.y, LONGE2 = INIMIGO_LONGE * INIMIGO_LONGE;
     this.enemies.children.iterate((e) => {
       if (!e || !e.active) return;
       this.aproximarObj(e);
+      // inimigo comum que ficou muito para trás volta para perto, na borda da tela (RN-59)
+      if (!e.isBoss && !e.isElite && (e.x - ppx) * (e.x - ppx) + (e.y - ppy) * (e.y - ppy) > LONGE2) {
+        const p = this.spawnPoint();
+        e.body.reset(p.x, p.y);
+      }
       list.push(e);
       const key = Math.floor(e.x / CELL) * 100003 + Math.floor(e.y / CELL);
       let arr = grid.get(key);

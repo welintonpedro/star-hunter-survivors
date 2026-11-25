@@ -66,3 +66,24 @@ test('com tudo no máximo, as cartas viram Sobrecarga e a escolhida melhora a na
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('RN-59: inimigo comum que fica muito longe volta para perto da nave (na borda da tela)', async () => {
+  const j = await abrirJogo({ busca: 'teste=1' });
+  try {
+    await esperarCena(j.pagina, 'Hangar');
+    await G(j.pagina, () => game.scene.getScene('Hangar').scene.start('Game', { ship: 0 }));
+    await esperarCena(j.pagina, 'Game');
+    await G(j.pagina, () => {
+      const g = game.scene.getScene('Game');
+      g.ritmoParado = true;
+      g.spawnEnemy('g1_rastejador');
+      let e = null; g.enemies.children.iterate((o) => { if (o && o.active && !o.isBoss && !o.isElite) e = o; });
+      e.body.reset(g.player.x + 3000, g.player.y);
+      window.__longe = e;
+    });
+    await new Promise((r) => setTimeout(r, 400));
+    const d = await G(j.pagina, () => { const g = game.scene.getScene('Game'), e = window.__longe; return Math.hypot(e.x - g.player.x, e.y - g.player.y); });
+    assert.ok(d < 900, 'deveria ter voltado para perto, está a ' + Math.round(d));
+    assert.deepEqual(j.erros, []);
+  } finally { await j.fechar(); }
+});

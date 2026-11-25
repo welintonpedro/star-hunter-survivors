@@ -7,17 +7,18 @@
 //   vida       = multiplica a vida dos inimigos comuns (1 = vida base); cresce mais rápido
 //                que a força da nave, para o fim da partida continuar difícil
 //   dano       = multiplica o dano dos inimigos comuns (1 = dano base)
+// Minutos 1 a 6: subida mais suave, para o jogador se firmar antes de apertar.
 // Os números são suavizados entre um minuto e o seguinte (não dão "degrau").
 // Quais inimigos aparecem e quando: src/dados/inimigos.js (campos "entra" e "peso").
 
 const ONDAS = [
   /*  0 */ { min:  14, max:  20, porSegundo:  2.0, vida:  1.00, dano: 1.00 },
-  /*  1 */ { min:  31, max:  46, porSegundo:  2.3, vida:  1.18, dano: 1.06 },
-  /*  2 */ { min:  43, max:  64, porSegundo:  2.7, vida:  1.38, dano: 1.12 },
-  /*  3 */ { min:  52, max:  78, porSegundo:  3.0, vida:  1.62, dano: 1.18 },
-  /*  4 */ { min:  61, max:  92, porSegundo:  3.4, vida:  1.89, dano: 1.24 },
-  /*  5 */ { min:  70, max: 105, porSegundo:  3.7, vida:  2.20, dano: 1.30 },
-  /*  6 */ { min:  78, max: 117, porSegundo:  4.1, vida:  2.57, dano: 1.36 },
+  /*  1 */ { min:  20, max:  30, porSegundo:  2.1, vida:  1.05, dano: 1.00 },
+  /*  2 */ { min:  30, max:  44, porSegundo:  2.3, vida:  1.15, dano: 1.00 },
+  /*  3 */ { min:  45, max:  64, porSegundo:  2.6, vida:  1.30, dano: 1.06 },
+  /*  4 */ { min:  55, max:  80, porSegundo:  3.0, vida:  1.50, dano: 1.12 },
+  /*  5 */ { min:  66, max:  96, porSegundo:  3.4, vida:  1.80, dano: 1.20 },
+  /*  6 */ { min:  78, max: 117, porSegundo:  4.1, vida:  2.30, dano: 1.30 },
   /*  7 */ { min:  86, max: 129, porSegundo:  4.4, vida:  2.98, dano: 1.42 },
   /*  8 */ { min:  93, max: 140, porSegundo:  4.8, vida:  3.47, dano: 1.48 },
   /*  9 */ { min: 100, max: 150, porSegundo:  5.1, vida:  4.02, dano: 1.54 },
