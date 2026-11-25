@@ -10,6 +10,22 @@
   <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 </head>
 <body>
-  <script src="game.js"></script>
+  <!-- A ordem importa: cada arquivo usa o que os anteriores definiram -->
+  <script src="src/config.js"></script>
+  <script src="src/dados/arte.js"></script>
+  <script src="src/dados/armas.js"></script>
+  <script src="src/dados/naves.js"></script>
+  <script src="src/dados/galaxias.js"></script>
+  <script src="src/dados/inimigos.js"></script>
+  <script src="src/dados/melhorias.js"></script>
+  <script src="src/save.js"></script>
+  <script src="src/utils.js"></script>
+  <script src="src/mapa.js"></script>
+  <script src="src/texturas.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/cenas/boot.js"></script>
+  <script src="src/cenas/hangar.js"></script>
+  <script src="src/cenas/partida.js"></script>
+  <script src="src/main.js"></script>
 </body>
 </html>

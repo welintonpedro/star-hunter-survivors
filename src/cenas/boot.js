@@ -1,0 +1,77 @@
+// =====================================================
+// CENA 1: BOOT
+// =====================================================
+class BootScene extends Phaser.Scene {
+  constructor() { super('Boot'); }
+  create() {
+    SHIPS.forEach((s) => pixelTexture(this, 'ship_' + s.id, ART[s.art], s.palette, 3));
+    GALAXIES.forEach((g, i) => {
+      pixelTexture(this, 'bug_' + i, ART.bug, g.alien, ENEMY_TYPES.bug.scale);
+      pixelTexture(this, 'diamond_' + i, ART.diamond, g.alien, ENEMY_TYPES.diamond.scale);
+      pixelTexture(this, 'saucer_' + i, ART.saucer, g.alien, ENEMY_TYPES.saucer.scale);
+      bossTexture(this, 'boss_' + i, g);
+      planetTexture(this, 'planet_' + i, g.planet);
+      gfxTexture(this, 'nest_' + i, 120, 120, (gr) => {
+        const a = hexToInt(g.alien.a), b = hexToInt(g.alien.b), d = hexToInt(g.alien.d);
+        gr.fillStyle(a); gr.fillCircle(60, 60, 56);
+        gr.fillStyle(d); gr.fillCircle(45, 50, 30); gr.fillCircle(75, 70, 28); gr.fillCircle(62, 38, 22);
+        gr.fillStyle(b);
+        [[40, 45], [70, 65], [60, 35], [50, 80], [80, 45]].forEach((p) => gr.fillEllipse(p[0], p[1], 14, 18));
+      });
+    });
+    pixelTexture(this, 'rock', ART.rock, { a: '#3f3f46', b: '#78716c', c: '#57534e' }, 4);
+    pixelTexture(this, 'crystal', ART.rock, { a: '#164e63', b: '#22d3ee', c: '#a5f3fc' }, 4);
+    pixelTexture(this, 'chest', ART.chest, { a: '#78350f', b: '#f59e0b', c: '#fef08a' }, 3);
+    pixelTexture(this, 'heal', ART.heal, { a: '#7f1d1d', b: '#ef4444' }, 3);
+    pixelTexture(this, 'coin', ART.coin, { a: '#713f12', b: '#facc15', c: '#fef9c3' }, 3);
+    pixelTexture(this, 'magnetItem', ART.magnet, { a: '#1e3a8a', b: '#3b82f6', c: '#e5e7eb' }, 3);
+    pixelTexture(this, 'bomb', ART.bomb, { a: '#111827', b: '#374151', c: '#f97316' }, 3);
+    pixelTexture(this, 'wbox', ART.wbox, { a: '#581c87', b: '#c084fc', c: '#f5d0fe' }, 4);
+    gfxTexture(this, 'bullet', 10, 10, (g) => { g.fillStyle(0xfde047); g.fillCircle(5, 5, 4); g.fillStyle(0xffffff); g.fillCircle(5, 5, 2); });
+    gfxTexture(this, 'ebullet', 12, 12, (g) => { g.fillStyle(0xf43f5e); g.fillCircle(6, 6, 5); g.fillStyle(0xffe4e6); g.fillCircle(6, 6, 2); });
+    gfxTexture(this, 'gem', 10, 10, (g) => { g.fillStyle(0x22d3ee); g.fillTriangle(5, 0, 10, 5, 5, 10); g.fillTriangle(5, 0, 0, 5, 5, 10); });
+    gfxTexture(this, 'orb', 16, 16, (g) => { g.fillStyle(0x38bdf8, 0.5); g.fillCircle(8, 8, 8); g.fillStyle(0xe0f2fe); g.fillCircle(8, 8, 4); });
+    gfxTexture(this, 'spark', 4, 4, (g) => { g.fillStyle(0xffffff); g.fillRect(0, 0, 4, 4); });
+    gfxTexture(this, 'missile', 8, 16, (g) => {
+      g.fillStyle(0xe5e7eb); g.fillRect(2, 4, 4, 9);
+      g.fillStyle(0xef4444); g.fillTriangle(2, 4, 6, 4, 4, 0);
+      g.fillStyle(0xf97316); g.fillRect(3, 13, 2, 3);
+    });
+    gfxTexture(this, 'disc', 26, 26, (g) => {
+      g.fillStyle(0x9ca3af); g.fillCircle(13, 13, 12);
+      g.fillStyle(0xe5e7eb); g.fillCircle(13, 13, 9);
+      g.fillStyle(0x374151); g.fillCircle(13, 13, 4);
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.fillCircle(13 + Math.cos(a) * 12, 13 + Math.sin(a) * 12, 2); }
+    });
+    gfxTexture(this, 'station', 96, 96, (g) => {
+      g.fillStyle(0x475569); g.fillRect(8, 42, 80, 12); g.fillRect(42, 8, 12, 80);
+      g.fillStyle(0x94a3b8); g.fillCircle(48, 48, 20);
+      g.fillStyle(0x22c55e); g.fillRect(44, 36, 8, 24); g.fillRect(36, 44, 24, 8);
+      g.fillStyle(0x38bdf8); [[10, 48], [86, 48], [48, 10], [48, 86]].forEach((p) => g.fillCircle(p[0], p[1], 5));
+    });
+    gfxTexture(this, 'blackhole', 240, 240, (g) => {
+      g.fillStyle(0x7c3aed, 0.12); g.fillCircle(120, 120, 118);
+      g.fillStyle(0x7c3aed, 0.2); g.fillCircle(120, 120, 90);
+      g.lineStyle(4, 0xc4b5fd, 0.6);
+      for (let i = 0; i < 4; i++) { g.beginPath(); g.arc(120, 120, 50 + i * 15, i, i + 2.2); g.strokePath(); }
+      g.fillStyle(0x000000); g.fillCircle(120, 120, 40);
+      g.lineStyle(3, 0xf5d0fe, 0.9); g.strokeCircle(120, 120, 42);
+    });
+    gfxTexture(this, 'relic', 48, 48, (g) => {
+      const pts = [];
+      for (let i = 0; i < 10; i++) { const r = i % 2 ? 9 : 22, a = -Math.PI / 2 + i * Math.PI / 5; pts.push({ x: 24 + Math.cos(a) * r, y: 24 + Math.sin(a) * r }); }
+      g.fillStyle(0xfacc15); g.fillPoints(pts, true);
+      g.fillStyle(0xfef9c3); g.fillCircle(24, 24, 6);
+    });
+    starTexture(this, 'stars_far', 256, 70, 1);
+    starTexture(this, 'stars_near', 256, 22, 2);
+    nebulaTexture(this, 'nebula');
+
+    const off = computeOffline();
+    if (off.credits > 0) SAVE.credits += off.credits;
+    writeSave(SAVE);
+    this.registry.set('offline', off);
+    this.scene.start('Hangar');
+  }
+}
+
