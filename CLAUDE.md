@@ -17,8 +17,12 @@ errado, pergunte antes de alterá-lo, porque mudar o
 teste esconde o bug.
 
 ## Pegadinhas
-- Phaser 3 vem por CDN, sem etapa de build: o GitHub
-  Pages publica os arquivos como estão.
+- Phaser 3 fica em lib/phaser.min.js (o Poki proíbe buscar arquivos em
+  outros sites), sem etapa de build: o GitHub Pages publica os arquivos como estão.
+- Poki: src/poki.js (pokiJogando, pokiParado, pokiIntervalo). Toda saída do jogo
+  (pausa, fim, cena) chama pokiParado; toda volta ao jogo, pokiJogando. Sem o PokiSDK
+  tudo vira "não faz nada". npm run poki gera dist-poki/ para enviar. NA_POKI = versão
+  do Poki: sem modo de teste e sem tela cheia. Regras: docs do Poki em requirements-quality.
 - A chave do save é star_hunter_survivors_save_v1. Quem
   joga pelo link do GitHub Pages tem progresso nela; mudar
   o formato exige converter pela versão do save (RN-42),

@@ -6,7 +6,8 @@
     "start": "npx serve .",
     "test": "node --test \"tests/*.test.js\"",
     "desempenho": "node tests/ajuda/medir-desempenho.js",
-    "versao": "node ferramentas/versao.js"
+    "versao": "node ferramentas/versao.js",
+    "poki": "node ferramentas/poki.js"
   },
   "devDependencies": {
     "phaser": "3.80.1",

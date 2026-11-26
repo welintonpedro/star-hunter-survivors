@@ -79,6 +79,28 @@ async function abrirJogo(opcoes = {}) {
       Object.defineProperty(window, 'localStorage', { get() { throw new Error('bloqueado'); } });
     });
   }
+  // opcoes.poki: abre como a versão do Poki, com um PokiSDK de mentira que anota cada chamada
+  // em window.__poki (o anúncio de mentira dura opcoes.poki.anuncioMs, padrão 400 ms)
+  if (opcoes.poki) {
+    await pagina.evaluateOnNewDocument((anuncioMs) => {
+      window.POKI_BUILD = true;
+      window.__poki = [];
+      const anota = (n) => () => { window.__poki.push(n); };
+      window.PokiSDK = {
+        init: () => { window.__poki.push('init'); return Promise.resolve(); },
+        gameLoadingFinished: anota('gameLoadingFinished'),
+        gameplayStart: anota('gameplayStart'),
+        gameplayStop: anota('gameplayStop'),
+        getLanguage: () => 'pt',
+        commercialBreak: (antes) => {
+          window.__poki.push('commercialBreak');
+          if (antes) antes();
+          window.__pokiDuranteAnuncio = { mudo: POKI.somMudo, teclado: game.input.keyboard.enabled };
+          return new Promise((ok) => setTimeout(ok, anuncioMs));
+        }
+      };
+    }, opcoes.poki.anuncioMs || 400);
+  }
   if (opcoes.saveInicial !== undefined) {
     await pagina.evaluateOnNewDocument((valor) => {
       if (!sessionStorage.getItem('__save_colocado')) {

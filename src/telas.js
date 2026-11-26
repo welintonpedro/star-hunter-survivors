@@ -199,13 +199,15 @@ function abrirConfiguracoes(scene, aoFechar, doMenu) {
   const rotuloEfeitos = () => bEfeitos.setLabel(PREFS.efeitosReduzidos ? tx('LIGADO') : tx('DESLIGADO'));
   rotuloEfeitos();
   partes.push(bEfeitos);
-  // tela cheia (o navegador só deixa ligar com um clique do jogador)
-  fixo(scene.add.text(W / 2 - 190, H / 2 - 10, tx('Tela cheia'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  const bTela = makeButton(scene, W / 2 + 120, H / 2 - 10, 140, 34, scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA'), () => {
-    if (scene.scale.isFullscreen) scene.scale.stopFullscreen(); else scene.scale.startFullscreen();
-    scene.time.delayedCall(150, () => bTela.setLabel(scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA')));
-  }, opc);
-  partes.push(bTela);
+  // tela cheia (o navegador só deixa ligar com um clique do jogador); no Poki quem cuida disso é o site
+  if (!NA_POKI) {
+    fixo(scene.add.text(W / 2 - 190, H / 2 - 10, tx('Tela cheia'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+    const bTela = makeButton(scene, W / 2 + 120, H / 2 - 10, 140, 34, scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA'), () => {
+      if (scene.scale.isFullscreen) scene.scale.stopFullscreen(); else scene.scale.startFullscreen();
+      scene.time.delayedCall(150, () => bTela.setLabel(scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA')));
+    }, opc);
+    partes.push(bTela);
+  }
   // idioma
   fixo(scene.add.text(W / 2 - 190, H / 2 + 40, tx('Idioma'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
   partes.push(makeButton(scene, W / 2 + 120, H / 2 + 40, 140, 34, nomeDoIdioma(IDIOMA), () => abrirIdiomas(scene, doMenu), opc));
@@ -278,7 +280,8 @@ function abrirEscolhaDeModo(scene, naveIndex) {
     if (travado) { m.info = tx('Termine 1 campanha para liberar'); m.cor = 0x1f2937; m.borda = 0x475569; }
     partes.push(makeButton(scene, W / 2, y, 620, 96, '', () => {
       if (travado) { scene.cameras.main.shake(150, 0.004); return; }
-      fechar(); scene.scene.start('Game', { ship: naveIndex, modo: m.id });
+      fechar();
+      pokiIntervalo(() => scene.scene.start('Game', { ship: naveIndex, modo: m.id }));   // no Poki pode passar um anúncio antes
     }, { fixed: true, depth: D + 1, color: m.cor, stroke: m.borda }));
     if (travado) fixo(scene.add.image(W / 2 + 270, y + 18, 'cadeado').setScale(3), 3);
     fixo(scene.add.text(W / 2 - 290, y - 30, m.nome, { fontFamily: 'Arial Black, Arial', fontSize: '22px', color: '#ffffff' }), 3);

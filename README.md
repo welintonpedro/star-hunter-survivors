@@ -20,3 +20,8 @@ botões para avançar o relógio (+1 min, +5 min, ir para 9:55). Sem isso no lin
 1. Precisa do Node.js e do Google Chrome instalados.
 2. Nesta pasta, rode `npm install` (só na primeira vez: baixa o Phaser e o controlador do Chrome).
 3. Rode `npm test`. Cada linha `ok` é um teste que passou; `not ok` mostra o que quebrou.
+
+## Versão para o Poki
+1. Rode `npm run poki`. Ele cria a pasta `dist-poki/` só com o que o jogo precisa.
+2. Abra https://inspector.poki.dev e arraste a pasta `dist-poki` para lá, para conferir se está tudo certo.
+3. Para enviar ao Poki for Developers, compacte a pasta em .zip (botão direito → Compactar/Enviar para → Pasta compactada).

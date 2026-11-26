@@ -5,6 +5,7 @@
 # Pastas geradas automaticamente
 node_modules/
 test-results/
+dist-poki/
 playwright-report/
 
 # Arquivos do sistema
