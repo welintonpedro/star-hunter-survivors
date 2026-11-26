@@ -37,7 +37,12 @@ const ARENA = {
   },
   // créditos por colocação (1º, 2º, ...10º), multiplicados pelo bônus da galáxia
   premio: [600, 400, 300, 220, 160, 120, 90, 70, 50, 40],
-  nomes: ['Orion', 'Vega', 'Rigel', 'Lyra', 'Draco', 'Nova', 'Sirius', 'Atlas', 'Cygnus', 'Kronos', 'Altair', 'Zenit'],
+  // nomes das naves rivais: estrelas de cada galáxia (RN-70); as naves do jogador são Altair, Antares e Rigel
+  nomesPorGalaxia: [
+    ['Vega', 'Deneb', 'Sirius', 'Procyon', 'Castor', 'Pollux', 'Capella', 'Spica', 'Alcor', 'Tarazed'],          // Nebulosa Esmeralda
+    ['Betelgeuse', 'Aldebaran', 'Arcturus', 'Mirach', 'Hadar', 'Shaula', 'Enif', 'Kochab', 'Mira', 'Scheat'],   // Cinturão Rubro
+    ['Bellatrix', 'Achernar', 'Canopus', 'Fomalhaut', 'Alnilam', 'Saiph', 'Polaris', 'Mizar', 'Alkaid', 'Algol'] // Abismo Violeta
+  ],
   cores: [0xf87171, 0xfb923c, 0xfacc15, 0x4ade80, 0x2dd4bf, 0x60a5fa, 0xa78bfa, 0xf472b6, 0xe5e7eb, 0x94a3b8]
 };
 // raio da zona no tempo t (encolhe em degraus suaves até o fim)

@@ -15,7 +15,7 @@ Object.assign(GameScene.prototype, {
     this.arenaChefes = 0;
     this.zonaTimer = 0;
     this.gfxZona = this.add.graphics().setDepth(4);
-    const nomes = Phaser.Utils.Array.Shuffle(ARENA.nomes.slice());
+    const nomes = Phaser.Utils.Array.Shuffle(ARENA.nomesPorGalaxia[this.gi % ARENA.nomesPorGalaxia.length].slice());   // estrelas desta galáxia
     for (let i = 0; i < ARENA.rivais; i++) {
       const a = (i / ARENA.rivais) * Math.PI * 2 + Math.random() * 0.4, d = 600 + Math.random() * 700;
       this.criarRival(this.zona.x + Math.cos(a) * d, this.zona.y + Math.sin(a) * d, nomes[i % nomes.length], ARENA.cores[i % ARENA.cores.length], i);

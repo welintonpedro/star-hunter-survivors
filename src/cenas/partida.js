@@ -1185,7 +1185,7 @@ class GameScene extends Phaser.Scene {
   }
 
   // ---------- PODERES EXCLUSIVOS ----------
-  // Falcão: leque de tiros; cada tiro pula para outro inimigo ao acertar (ricochete)
+  // Altair (antiga Falcão): leque de tiros; cada tiro pula para outro inimigo ao acertar (ricochete)
   fireRajada(s) {
     const t = this.nearestTarget(560);
     if (!t) return false;
@@ -1199,7 +1199,7 @@ class GameScene extends Phaser.Scene {
     this.ultimaMira = this.elapsed;
     return true;
   }
-  // Titã: onda que esmaga e atordoa; evoluída, puxa os inimigos antes
+  // Antares (antiga Titã): onda que esmaga e atordoa; evoluída, puxa os inimigos antes
   fireMartelo(s) {
     const px = this.player.x, py = this.player.y, r = s.radius;
     const near = this.nearestTarget(r * 1.1);
@@ -1217,7 +1217,7 @@ class GameScene extends Phaser.Scene {
     });
     return true;
   }
-  // Agulha: um dardo muito rápido para cada inimigo perto
+  // Rigel (antiga Agulha): um dardo muito rápido para cada inimigo perto
   fireAgulhas(s) {
     const px = this.player.x, py = this.player.y;
     const alvos = [];
