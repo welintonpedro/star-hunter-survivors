@@ -111,3 +111,17 @@ Object.assign(GameScene.prototype, {
     return partes;
   }
 });
+
+// ============ CLARÕES SEGUROS (RN-76: proteção contra crises de epilepsia fotossensível) ============
+// Regra de acessibilidade (WCAG 2.3.1): nada de clarão forte de tela inteira, e no máximo 1 por segundo.
+// Todo clarão do jogo passa por aqui; o cameras.main.flash do Phaser (tela 100% colorida) não é usado.
+const CLARAO_MAX = 0.2;          // intensidade máxima (0 a 1)
+const CLARAO_INTERVALO = 1000;   // milissegundos mínimos entre dois clarões
+function clarao(scene, ms, cor, forca) {
+  const agora = scene.time.now;
+  if (scene.__ultimoClarao !== undefined && agora - scene.__ultimoClarao < CLARAO_INTERVALO) return;
+  scene.__ultimoClarao = agora;
+  const a = Math.min(CLARAO_MAX, forca === undefined ? CLARAO_MAX : forca);
+  const r = scene.add.rectangle(W / 2, H / 2, W, H, cor === undefined ? 0xffffff : cor, 1).setAlpha(a).setScrollFactor(0).setDepth(2500);
+  scene.tweens.add({ targets: r, alpha: 0, duration: Math.max(300, ms), ease: 'Sine.easeOut', onComplete: () => r.destroy() });
+}

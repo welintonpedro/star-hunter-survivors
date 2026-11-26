@@ -13,13 +13,14 @@ const clicar = (rotulo) => {
 };
 const textos = () => game.scene.getScene('Hangar').children.list.filter((o) => o.type === 'Text').map((o) => o.text);
 
-test('RN-57: ao abrir o jogo aparece o menu com Jogar/Continuar, Novo jogo, Conquistas e Configurações', async () => {
+test('RN-57/RN-78: ao abrir o jogo aparece o menu com Jogar, Conquistas e Configurações (Novo jogo só para quem já jogou)', async () => {
   const j = await abrirJogo();
   try {
     await esperarCena(j.pagina, 'Hangar');
     const t = await G(j.pagina, textos);
-    assert.ok(t.includes('JOGAR') || t.includes('CONTINUAR'));
-    ['NOVO JOGO', 'CONFIGURAÇÕES'].forEach((x) => assert.ok(t.includes(x), x));
+    assert.ok(t.includes('JOGAR'));
+    assert.ok(!t.includes('NOVO JOGO'), 'jogador novo não tem o que apagar (RN-78)');
+    assert.ok(t.includes('CONFIGURAÇÕES'));
     assert.ok(t.some((x) => x.startsWith('CONQUISTAS')));
     // continuar fecha o menu e mostra o hangar
     await G(j.pagina, (src) => { eval(src)('JOGAR'); }, '(' + clicar.toString() + ')');

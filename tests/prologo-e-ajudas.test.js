@@ -58,11 +58,11 @@ test('RN-73: o prólogo inteiro roda até o menu, não mexe em créditos/estatí
     });
     await j.pagina.waitForFunction(() => game.scene.isActive('Hangar'), { timeout: 280000, polling: 500 });
     const r = await G(j.pagina, (src) => ({ passos: window.__passos, visto: PREFS.prologoVisto, salvo: JSON.parse(localStorage.getItem('star_hunter_survivors_config_v1')).prologoVisto,
-      creditos: SAVE.credits, abates: SAVE.stats.abates, tempo: SAVE.stats.tempoTotal, conquistas: Object.keys(SAVE.conquistas).length, combos: SAVE.combos.length, menu: eval(src)('Hangar') }), '(' + textos.toString() + ')');
+      creditos: SAVE.credits, abates: SAVE.stats.abates, tempo: SAVE.stats.tempoTotal, conquistas: Object.keys(SAVE.conquistas).join(','), combos: SAVE.combos.length, menu: eval(src)('Hangar') }), '(' + textos.toString() + ')');
     passos.push(...r.passos);
     assert.deepEqual(passos, ROTEIRO_PROLOGO.map((p) => p.id), 'todos os passos, na ordem');
     assert.equal(r.visto, true); assert.equal(r.salvo, true);
-    assert.deepEqual({ c: r.creditos, a: r.abates, t: r.tempo, q: r.conquistas, k: r.combos }, { c: 0, a: 0, t: 0, q: 0, k: 0 }, 'o prólogo não conta');
+    assert.deepEqual({ c: r.creditos, a: r.abates, t: r.tempo, q: r.conquistas, k: r.combos }, { c: 0, a: 0, t: 0, q: 'prologo', k: 0 }, 'o prólogo não conta (só dá a conquista Viajante do Tempo, RN-77)');
     assert.ok(r.menu.includes('NOVO JOGO') || r.menu.includes('JOGAR'), 'termina no menu do jogo');
     await j.pagina.reload();
     await esperarCena(j.pagina, 'Hangar');   // na próxima vez abre no hangar/menu

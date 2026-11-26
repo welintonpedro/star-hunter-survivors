@@ -91,9 +91,26 @@ function abrirConquistas(scene, aoFechar) {
 // ============ MENU PRINCIPAL (aparece ao abrir o jogo, por cima do hangar) ============
 // Continuar = hangar com o progresso; Novo jogo = apaga tudo (com confirmação);
 // Conquistas; Configurações (RN-57).
+// Já jogou de verdade? (a conquista do prólogo não conta: quem só viu a história ainda é jogador novo)
 function _temProgresso() {
   return SAVE.credits > 0 || Object.keys(SAVE.owned).length > 1 || SAVE.stats.tempoTotal > 0 ||
-    Object.keys(SAVE.conquistas).length > 0 || Object.values(SAVE.meta).some((v) => v > 0);
+    Object.values(SAVE.meta).some((v) => v > 0);
+}
+// Conquistas ganhas fora da partida (ex.: terminar o prólogo) esperam aqui para o menu avisar
+var CONQUISTA_NOVA = [];
+function avisoDeConquistaNoMenu(scene) {
+  const c = CONQUISTA_NOVA.shift();
+  if (!c) return;
+  tocarSom(scene, 'conquista');
+  const x = W / 2, y = 70, partes = [];
+  const fixo = (o) => { partes.push(o.setScrollFactor(0).setDepth(1200)); return o; };
+  fixo(scene.add.rectangle(x, y, 300, 66, 0x14532d, 0.95).setStrokeStyle(2, 0x4ade80));
+  fixo(scene.add.text(x, y - 19, tx('CONQUISTA!'), { fontFamily: 'Arial Black, Arial', fontSize: '14px', color: '#fde047' }).setOrigin(0.5));
+  fixo(scene.add.text(x, y, c.nome, { fontFamily: 'Arial', fontSize: '16px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5));
+  fixo(scene.add.text(x, y + 19, textoDoPremio(c.premio, ''), { fontFamily: 'Arial', fontSize: '12px', color: '#bbf7d0' }).setOrigin(0.5));
+  partes.forEach((p) => { p.y -= 140; });
+  scene.tweens.add({ targets: partes, y: '+=140', duration: 400, ease: 'Back.easeOut' });
+  scene.time.delayedCall(4000, () => scene.tweens.add({ targets: partes, y: '-=140', duration: 300, onComplete: () => { partes.forEach((p) => p.destroy()); avisoDeConquistaNoMenu(scene); } }));
 }
 function abrirMenuPrincipal(scene, aoContinuar) {
   const D = 1000, partes = [];
@@ -112,13 +129,16 @@ function abrirMenuPrincipal(scene, aoContinuar) {
   };
   const progresso = _temProgresso();
   botao(250, progresso ? tx('CONTINUAR') : tx('JOGAR'), () => { fechar(); if (aoContinuar) aoContinuar(); }, 0x166534, 0x4ade80);
-  botao(308, tx('NOVO JOGO'), () => {
-    if (!progresso) { fechar(); if (aoContinuar) aoContinuar(); return; }
-    _confirmarNovoJogo(scene, () => { fechar(); scene.scene.restart(); });
-  }, 0x7f1d1d, 0xfca5a5);
+  // jogador novo não tem o que apagar: só aparece JOGAR (RN-78)
+  let yB = 308;
+  if (progresso) {
+    botao(yB, tx('NOVO JOGO'), () => _confirmarNovoJogo(scene, () => { fechar(); scene.scene.restart(); }), 0x7f1d1d, 0xfca5a5);
+    yB += 58;
+  }
   const nCq = CONQUISTAS.filter((c) => SAVE.conquistas[c.id]).length;
-  botao(366, tx('CONQUISTAS') + '  ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(scene), 0x14532d, 0x4ade80);
-  botao(424, tx('CONFIGURAÇÕES'), () => abrirConfiguracoes(scene, null, true));
+  botao(yB, tx('CONQUISTAS') + '  ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(scene), 0x14532d, 0x4ade80);
+  botao(yB + 58, tx('CONFIGURAÇÕES'), () => abrirConfiguracoes(scene, null, true));
+  scene.time.delayedCall(600, () => avisoDeConquistaNoMenu(scene));   // ex.: "Viajante do Tempo" ao sair do prólogo
   // idioma: mostra o atual; clicar abre a lista (RN-61)
   partes.push(makeButton(scene, W - 110, H - 30, 190, 32, tx('IDIOMA') + ': ' + nomeDoIdioma(IDIOMA), () => abrirIdiomas(scene, true), { fixed: true, depth: D + 2, size: 13 }));
   fixo(scene.add.text(W / 2, H - 24, tx('Mover: WASD/setas ou arrastar  •  Escolhas: 1/2/3  •  Pausa: ESC ou P'), {
@@ -152,47 +172,55 @@ function abrirConfiguracoes(scene, aoFechar, doMenu) {
   const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
   const fechar = () => { partes.forEach((p) => p.destroy()); if (aoFechar) aoFechar(); };
   fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setInteractive());
-  fixo(scene.add.rectangle(W / 2, H / 2, 480, 500, 0x0b1220).setStrokeStyle(3, 0x60a5fa), 1);
-  fixo(scene.add.text(W / 2, H / 2 - 220, tx('CONFIGURAÇÕES'), { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#a5f3fc' }).setOrigin(0.5), 2);
+  fixo(scene.add.rectangle(W / 2, H / 2, 480, 520, 0x0b1220).setStrokeStyle(3, 0x60a5fa), 1);
+  fixo(scene.add.text(W / 2, H / 2 - 235, tx('CONFIGURAÇÕES'), { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#a5f3fc' }).setOrigin(0.5), 2);
   const opc = { fixed: true, depth: D + 3, size: 15 };
+  // volume da música de fundo (RN-75)
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 120, tx('Volume da música'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const txtMus = fixo(scene.add.text(W / 2 + 120, H / 2 - 120, '', { fontFamily: 'Arial', fontSize: '16px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 2);
+  const mostrarMus = () => txtMus.setText(Math.round(PREFS.musica * 100) + '%');
+  const mudarMus = (d) => { PREFS.musica = Math.round(Math.min(1, Math.max(0, PREFS.musica + d)) * 10) / 10; salvarPrefs(); aplicarVolumeMusica(); mostrarMus(); };
+  partes.push(makeButton(scene, W / 2 + 60, H / 2 - 120, 40, 34, '−', () => mudarMus(-0.1), opc));
+  partes.push(makeButton(scene, W / 2 + 180, H / 2 - 120, 40, 34, '+', () => mudarMus(0.1), opc));
+  mostrarMus();
   // volume: - e + em passos de 10%
-  fixo(scene.add.text(W / 2 - 190, H / 2 - 160, tx('Volume dos sons'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  const txtVol = fixo(scene.add.text(W / 2 + 120, H / 2 - 160, '', { fontFamily: 'Arial', fontSize: '16px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 2);
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 170, tx('Volume dos sons'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const txtVol = fixo(scene.add.text(W / 2 + 120, H / 2 - 170, '', { fontFamily: 'Arial', fontSize: '16px', color: '#fde047', fontStyle: 'bold' }).setOrigin(0.5), 2);
   const mostrarVol = () => txtVol.setText(Math.round(PREFS.volume * 100) + '%');
   const mudarVol = (d) => { PREFS.volume = Math.round(Math.min(1, Math.max(0, PREFS.volume + d)) * 10) / 10; salvarPrefs(); aplicarPrefs(scene.game); mostrarVol(); };
-  partes.push(makeButton(scene, W / 2 + 60, H / 2 - 160, 40, 34, '−', () => mudarVol(-0.1), opc));
-  partes.push(makeButton(scene, W / 2 + 180, H / 2 - 160, 40, 34, '+', () => mudarVol(0.1), opc));
+  partes.push(makeButton(scene, W / 2 + 60, H / 2 - 170, 40, 34, '−', () => mudarVol(-0.1), opc));
+  partes.push(makeButton(scene, W / 2 + 180, H / 2 - 170, 40, 34, '+', () => mudarVol(0.1), opc));
   mostrarVol();
   // efeitos reduzidos
-  fixo(scene.add.text(W / 2 - 190, H / 2 - 100, tx('Efeitos reduzidos\n(menos faíscas, ajuda celular fraco)'), { fontFamily: 'Arial', fontSize: '14px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  const bEfeitos = makeButton(scene, W / 2 + 120, H / 2 - 100, 140, 34, '', () => {
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 65, tx('Efeitos reduzidos\n(menos faíscas, ajuda celular fraco)'), { fontFamily: 'Arial', fontSize: '14px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const bEfeitos = makeButton(scene, W / 2 + 120, H / 2 - 65, 140, 34, '', () => {
     PREFS.efeitosReduzidos = !PREFS.efeitosReduzidos; salvarPrefs(); rotuloEfeitos();
   }, opc);
   const rotuloEfeitos = () => bEfeitos.setLabel(PREFS.efeitosReduzidos ? tx('LIGADO') : tx('DESLIGADO'));
   rotuloEfeitos();
   partes.push(bEfeitos);
   // tela cheia (o navegador só deixa ligar com um clique do jogador)
-  fixo(scene.add.text(W / 2 - 190, H / 2 - 40, tx('Tela cheia'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  const bTela = makeButton(scene, W / 2 + 120, H / 2 - 40, 140, 34, scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA'), () => {
+  fixo(scene.add.text(W / 2 - 190, H / 2 - 10, tx('Tela cheia'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const bTela = makeButton(scene, W / 2 + 120, H / 2 - 10, 140, 34, scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA'), () => {
     if (scene.scale.isFullscreen) scene.scale.stopFullscreen(); else scene.scale.startFullscreen();
     scene.time.delayedCall(150, () => bTela.setLabel(scene.scale.isFullscreen ? tx('LIGADA') : tx('DESLIGADA')));
   }, opc);
   partes.push(bTela);
   // idioma
-  fixo(scene.add.text(W / 2 - 190, H / 2 + 20, tx('Idioma'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  partes.push(makeButton(scene, W / 2 + 120, H / 2 + 20, 140, 34, nomeDoIdioma(IDIOMA), () => abrirIdiomas(scene, doMenu), opc));
+  fixo(scene.add.text(W / 2 - 190, H / 2 + 40, tx('Idioma'), { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  partes.push(makeButton(scene, W / 2 + 120, H / 2 + 40, 140, 34, nomeDoIdioma(IDIOMA), () => abrirIdiomas(scene, doMenu), opc));
   // ajudas para iniciantes: botão MOVER, teclas na tela e carta RECOMENDADA (RN-72)
-  fixo(scene.add.text(W / 2 - 190, H / 2 + 85, tx('Ajudas para iniciantes\n(botão mover, teclas, carta recomendada)'), { fontFamily: 'Arial', fontSize: '13px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
-  const bAj = makeButton(scene, W / 2 + 120, H / 2 + 85, 140, 34, '', () => { PREFS.ajudas = !ajudasLigadas(); salvarPrefs(); rotAj(); }, opc);
+  fixo(scene.add.text(W / 2 - 190, H / 2 + 95, tx('Ajudas para iniciantes\n(botão mover, teclas, carta recomendada)'), { fontFamily: 'Arial', fontSize: '13px', color: '#e2e8f0' }).setOrigin(0, 0.5), 2);
+  const bAj = makeButton(scene, W / 2 + 120, H / 2 + 95, 140, 34, '', () => { PREFS.ajudas = !ajudasLigadas(); salvarPrefs(); rotAj(); }, opc);
   const rotAj = () => bAj.setLabel(ajudasLigadas() ? tx('LIGADO') : tx('DESLIGADO'));
   rotAj();
   partes.push(bAj);
   // ver a história do começo (prólogo) de novo (RN-73)
-  partes.push(makeButton(scene, W / 2 - 90, H / 2 + 175, 220, 34, tx('VER PRÓLOGO DE NOVO'), () => {
+  partes.push(makeButton(scene, W / 2 - 90, H / 2 + 170, 220, 34, tx('VER PRÓLOGO DE NOVO'), () => {
     partes.forEach((p) => p.destroy());
     scene.scene.start('Game', { modo: 'prologo' });
   }, opc));
-  partes.push(makeButton(scene, W / 2 + 130, H / 2 + 175, 140, 34, tx('FECHAR'), fechar, opc));
+  partes.push(makeButton(scene, W / 2 + 130, H / 2 + 170, 140, 34, tx('FECHAR'), fechar, opc));
   return { partes, fechar };
 }
 

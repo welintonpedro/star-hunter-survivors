@@ -18,7 +18,8 @@ function statsIniciais() {
     melhorTempo: {},   // 'galáxia:nave' → segundos
     vitorias: {},      // 'galáxia:nave' → true
     locais: {},        // galáxia → lista dos locais já descobertos (índices)
-    armasAchadas: {}   // arma travada → quantas vezes foi achada
+    armasAchadas: {},  // arma travada → quantas vezes foi achada
+    prologo: false     // terminou o prólogo (conquista Viajante do Tempo); saves antigos começam com false
   };
 }
 
@@ -73,6 +74,7 @@ function corrigirSave(bruto, navesValidas, agora) {
     if (Array.isArray(v)) s.stats.locais[k] = [...new Set(v.filter((i) => Number.isInteger(i) && i >= 0))];
   });
   Object.entries(_obj(st.armasAchadas)).forEach(([k, v]) => { const n = inteiroPositivo(v); if (n) s.stats.armasAchadas[k] = n; });
+  s.stats.prologo = st.prologo === true;
 
   // recordes (v5)
   const rec = _obj(bruto.recordes);

@@ -36,7 +36,7 @@ const PROLOGO_INICIO = {
   nivel: 12,
   armas: [['rajada', 4], ['pulsar', 4], ['missiles', 3]],   // a 4ª vaga fica para a arma suprema do roteiro
   itens: [['core', 2], ['multi', 1], ['armor', 2]],
-  xpPorNivel: 45,        // XP fixa por nível no prólogo (sobe de nível rápido, para ver muitas cartas)
+  xpPorNivel: 90,        // XP fixa por nível no prólogo (depois da lição, as cartas se escolhem sozinhas)
   vidaInimigos: 0.45,    // inimigos do prólogo têm menos da metade da vida (parece fácil)
   danoRecebido: 0.25,    // a nave recebe só 25% do dano (até a nave-mãe chegar)
   vidaChefe: 0.35        // chefe do prólogo cai rápido
@@ -60,8 +60,8 @@ const ROTEIRO_PROLOGO = [
   { id: 'cerco', min: 35, max: 45 },
   { id: 'subchefe', min: 12, max: 40 },
   { id: 'chefe', min: 35, max: 80 },
-  { id: 'vitoria', min: 6, max: 6 },
-  { id: 'naveMae', min: 14, max: 14 },
+  { id: 'vitoria', min: 4, max: 4 },
+  { id: 'naveMae', min: 11, max: 11 },
   { id: 'fim', min: 999, max: 999 }
 ];
 

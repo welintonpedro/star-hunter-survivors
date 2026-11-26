@@ -12,6 +12,7 @@ class HangarScene extends Phaser.Scene {
     this.time.addEvent({ delay: 10000, loop: true, callback: () => writeSave(SAVE) });
     this.showSaveWarning();
     aplicarPrefs(this.game);
+    tocarMusica(this, 'menu');   // música de fundo do hangar (src/musica.js)
     // menu principal só quando o jogo abre (voltar de uma partida cai direto no hangar)
     if (!MENU_INICIAL.mostrado) { MENU_INICIAL.mostrado = true; abrirMenuPrincipal(this); }
   }

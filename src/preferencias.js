@@ -3,13 +3,14 @@
 const PREFS_KEY = 'star_hunter_survivors_config_v1';
 
 function lerPrefs() {
-  const padrao = { volume: 0.7, efeitosReduzidos: false, idioma: null, prologoVisto: false, ajudas: true };
+  const padrao = { volume: 0.7, musica: 0.5, efeitosReduzidos: false, idioma: null, prologoVisto: false, ajudas: true };
   try {
     const bruto = STORAGE && JSON.parse(STORAGE.getItem(PREFS_KEY) || 'null');
     if (!bruto || typeof bruto !== 'object') return padrao;
     const v = Number(bruto.volume);
     return {
       volume: Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : padrao.volume,
+      musica: Number.isFinite(Number(bruto.musica)) ? Math.min(1, Math.max(0, Number(bruto.musica))) : padrao.musica,
       efeitosReduzidos: bruto.efeitosReduzidos === true,
       idioma: typeof bruto.idioma === 'string' ? bruto.idioma : null,   // null = detectar pelo navegador
       prologoVisto: bruto.prologoVisto === true,

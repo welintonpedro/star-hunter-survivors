@@ -52,7 +52,10 @@ const CONQUISTAS = [
   { id: 'venceuAgulha', nome: 'Brilho de Rigel', desc: 'Conquiste uma galáxia com a Rigel',
     cond: (s) => venceu(s, 'agulha'), premio: { tipo: 'bonus', bonus: { velocidade: 0.05 } } },
   { id: 'mestre', nome: 'Senhor das Galáxias', desc: 'Conquiste as 3 galáxias com as 3 naves',
-    cond: (s) => Object.keys(s.stats.vitorias).length >= 9, premio: { tipo: 'bonus', bonus: { dano: 0.1, creditos: 0.15 } } }
+    cond: (s) => Object.keys(s.stats.vitorias).length >= 9, premio: { tipo: 'bonus', bonus: { dano: 0.1, creditos: 0.15 } } },
+  // terminar a história do começo (RN-77, pedido do dono em 26/11/2026)
+  { id: 'prologo', nome: 'Viajante do Tempo', desc: 'Termine o prólogo',
+    cond: (s) => s.stats.prologo === true, premio: { tipo: 'bonus', bonus: { xp: 0.05 } } }
 ];
 
 function maxTempo(s) {

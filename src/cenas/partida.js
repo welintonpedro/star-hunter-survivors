@@ -82,6 +82,7 @@ class GameScene extends Phaser.Scene {
     this.banner(this.gal.name, '#' + this.gal.starTint.toString(16).padStart(6, '0'));
     if (this.modo === 'arena') this.iniciarArena();                       // src/arena.js
     if (this.modo === 'prologo') this.iniciarPrologo();                   // src/prologo.js
+    tocarMusica(this, 'g' + this.gi);   // cada galáxia tem as suas músicas (src/musica.js)
     if (this.modo === 'infinito') this.banner(tx('MODO INFINITO: até a nave cair'), '#a5f3fc');
   }
 
@@ -856,7 +857,7 @@ class GameScene extends Phaser.Scene {
     m.tiroT = 1.2;
     this.naveMae = m;
     this.physics.add.overlap(this.player, m, () => { this.invuln = 0; this.hurt(99999); });
-    this.cameras.main.flash(500, 255, 255, 255);
+    clarao(this, 500, 0xffffff);
     this.cameras.main.shake(600, 0.01);
     this.banner(tx('A NAVE-MÃE CHEGOU! GALÁXIA CONQUISTADA!'), '#86efac');
     this.time.delayedCall(EVENTOS.naveMaeDuracao * 1000, () => this.endRun('victory', this.primeiraVitoria));
@@ -911,7 +912,7 @@ class GameScene extends Phaser.Scene {
     });
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (e.flash > 0) { e.flash -= dt; if (e.flash <= 0) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); if (e.isRival) e.setTint(e.corRival); } }
+      if (e.flash > 0) { e.flash -= dt; if (e.flash <= 0 && !e.intangivel) e.setAlpha(1); }
       if (e.straight) {
         e.life -= dt;
         if (e.life <= 0) { e.disableBody(true, true); continue; }
@@ -1075,7 +1076,7 @@ class GameScene extends Phaser.Scene {
     if (!t.active || t.intangivel) return;
     t.ultimoDano = this.elapsed;
     t.hp -= dmg;
-    if (t.setTintFill) t.setTintFill(0xffffff); else t.setTint(0xffffff);
+    if (t.isRock) t.setTint(0xe7e5e4); else if (!t.intangivel) t.setAlpha(0.55);   // atingido: fica meio transparente por um instante (sem piscar branco, RN-76)
     t.flash = 0.06;
     if (t.hp <= 0) { if (t.isRock) this.breakRock(t); else this.killEnemy(t); }
   }
@@ -1359,8 +1360,7 @@ class GameScene extends Phaser.Scene {
       if (e.active && !e.isBoss) { e.atordoado = s.atordoa; e.atordoamentos = (e.atordoamentos || 0) + 1; }
     }
     this.tweens.add({ targets: g, alpha: 0, duration: 240, onComplete: () => g.destroy() });
-    this.cameras.main.flash(60, 254, 249, 195);
-    return true;
+    return true;   // sem clarão na tela: a arma dispara toda hora (RN-76)
   }
   // Super Míssil: lento, grande e com explosão enorme (RN-63)
   fireSuperMissil(s) {
@@ -1631,7 +1631,7 @@ class GameScene extends Phaser.Scene {
       else if (t === 'coin') { tocarSom(this, 'moeda'); const v = (extra || 15) * this.gal.rewardMult * this.creditMult; this.runCredits += v; this.floatText(px, py, tx('+{v} créditos', { v: fmt(v) }), '#facc15'); }
       else if (t === 'magnet') { this.gems.children.iterate((g) => { if (g && g.active) g.magnetized = true; }); this.floatText(px, py, tx('ÍMÃ TOTAL!'), '#22d3ee'); }
       else if (t === 'bomb') this.detonate();
-      else if (t === 'congelar') { this.congeladoAte = this.elapsed + PODER_CONGELAR_S; this.cameras.main.flash(200, 147, 197, 253); this.banner(tx('TEMPO PARADO!'), '#93c5fd'); tocarSom(this, 'conquista'); }
+      else if (t === 'congelar') { this.congeladoAte = this.elapsed + PODER_CONGELAR_S; clarao(this, 200, 0x93c5fd); this.banner(tx('TEMPO PARADO!'), '#93c5fd'); tocarSom(this, 'conquista'); }
       else if (t === 'lento') { this.lentoAte = this.elapsed + PODER_LENTO_S; this.banner(tx('INIMIGOS LENTOS!'), '#c4b5fd'); tocarSom(this, 'conquista'); }
       else if (t === 'chamas') { this.chamasAte = this.elapsed + PODER_CHAMAS_S; this.banner(tx('LANÇA-CHAMAS!'), '#fb923c'); tocarSom(this, 'conquista'); }
       else if (t === 'chest') { if (extra === 'subchefe') this.bausSubchefe++; this.pendingChests++; this.openNextModal(); }
@@ -1643,7 +1643,7 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: t, y: y - 70, alpha: 0, duration: 900, onComplete: () => t.destroy() });
   }
   detonate() {
-    this.cameras.main.flash(250, 255, 200, 120);
+    clarao(this, 250, 0xffc878);
     const px = this.player.x, py = this.player.y;
     const list = [];
     this.enemies.children.iterate((e) => { if (e && e.active && Math.hypot(e.x - px, e.y - py) < 650) list.push(e); });
@@ -1857,6 +1857,7 @@ class GameScene extends Phaser.Scene {
   }
   openLevelUp() {
     tocarSom(this, 'nivel');
+    if (this.modo === 'prologo' && this.nivelAutomaticoPrologo()) return;   // prólogo: sem parar a ação (src/prologo.js)
     this.pauseForModal();
     let options = this.pickWeighted(this.upgradeOptions(), 3);
     if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
@@ -1934,7 +1935,7 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: esc.bau, y: esc.y - 30, scale: 6.2, duration: 220, yoyo: true, ease: 'Quad.easeOut' });
     this.time.delayedCall(460, () => {
       if (this.modal !== m || m.fase !== 'abrindo') return;   // já revelado (ou fechado)
-      this.cameras.main.flash(220, 255, 240, 180);
+      clarao(this, 220, 0xfff0b4);
       esc.bau.setTexture('chest_aberto');
       const raios = m.fixo(this.add.image(esc.x, esc.y - 10, 'raios').setScale(1.6).setAlpha(0.85), 1);
       this.tweens.add({ targets: raios, angle: 360, duration: 6000, repeat: -1 });
@@ -1956,7 +1957,7 @@ class GameScene extends Phaser.Scene {
       const novo = this.modo !== 'prologo' && registrarCombo(SAVE, w.id);   // salvo para sempre (o prólogo não conta)
       if (novo) writeSave(SAVE);
       m.comboId = w.id; m.comboNovo = novo;
-      this.cameras.main.flash(300, 240, 171, 252);
+      clarao(this, 300, 0xf0abfc);
     } else {
       for (let k = 0; k < c.melhorias; k++) {
         const semArmaNova = this.upgradeOptions().filter((o) => !(o.kind === 'weapon' && o.level === 1));   // arma nova só nas cartas de nível
@@ -2048,7 +2049,7 @@ class GameScene extends Phaser.Scene {
     this.dropPickup(e.x, e.y, 'chest');
     const bonus = c.creditos * this.gal.rewardMult;
     this.bonus += bonus; this.runCredits += bonus;
-    this.cameras.main.flash(300, 255, 255, 255);
+    clarao(this, 300, 0xffffff);
     this.banner(tx('CHEFE DERROTADO! +{v} créditos', { v: fmt(bonus) }), '#86efac');
     this.boss = this.chefeVivo();
   }

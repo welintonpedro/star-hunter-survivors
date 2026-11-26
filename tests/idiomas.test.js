@@ -59,7 +59,7 @@ test('RN-61: trocar o idioma no menu muda os textos e fica guardado depois de re
     const depois = await G(j.pagina, () => ({ id: IDIOMA, arma: WEAPONS.pulsar.name, textos: game.scene.getScene('Hangar').children.list.filter((o) => o.type === 'Text').map((o) => o.text) }));
     assert.equal(depois.id, 'fr');
     assert.equal(depois.arma, 'Canon Pulsar');
-    assert.ok(depois.textos.includes('NOUVELLE PARTIE'), 'o menu deveria voltar em francês');
+    assert.ok(depois.textos.includes('JOUER'), 'o menu deveria voltar em francês');   // jogador novo vê só JOGAR (RN-78)
     await j.pagina.reload();
     await esperarCena(j.pagina, 'Hangar');
     assert.equal(await G(j.pagina, () => IDIOMA), 'fr', 'a escolha deve valer mais que o idioma do navegador');

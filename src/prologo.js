@@ -74,7 +74,7 @@ Object.assign(GameScene.prototype, {
     if (id === 'abertura') {
       this.falaPrologo(tx('Ano 3025. Abismo Violeta.'), '#e9d5ff');
       this.time.delayedCall(4200, () => { if (this.passoAtual() && this.passoAtual().id === 'abertura') this.falaPrologo(tx('Você pilota a Eclipse, a nave mais forte do universo!')); });
-      this.ondaPrologo(10);
+      this.ondaPrologo(30);   // já começa com ação
     } else if (id === 'telaCheia') {
       if (!this.btnTelaCheia || this.scale.isFullscreen) { pr.t = 999; return; }   // sem tela cheia (iPhone) ou já está: pula
       this.falaPrologo(tx('Toque em TELA CHEIA para jogar maior!'));
@@ -136,6 +136,7 @@ Object.assign(GameScene.prototype, {
       this.enemies.children.iterate((e) => { if (e && e.active && e.isBoss) { e.hp *= PROLOGO_INICIO.vidaChefe; e.maxHp *= PROLOGO_INICIO.vidaChefe; } });
     } else if (id === 'vitoria') {
       this.falaPrologo(tx('VITÓRIA! A galáxia é sua!'), '#86efac');
+      this.ondaPrologo(30);   // mais monstros chegando: não deixa a tela vazia
       tocarSom(this, 'conquista');
       for (let k = 0; k < 10; k++) this.time.delayedCall(k * 180, () => this.boom(this.player.x + (Math.random() - 0.5) * 360, this.player.y + (Math.random() - 0.5) * 220, 12, [0xfde047, 0x4ade80, 0x60a5fa, 0xf0abfc][k % 4]));
     } else if (id === 'naveMae') {
@@ -154,20 +155,28 @@ Object.assign(GameScene.prototype, {
     pr.t += dt;
     const id = passo.id;
     let pronto = false;
+    if (id === 'abertura' || id === 'telaCheia') this.manterOnda(dt, 1.5, 10, 50);   // ação desde o primeiro segundo
     if (id === 'telaCheia') pronto = this.scale.isFullscreen;
     else if (id === 'mover') {
+      this.manterOnda(dt, 1.5, 10, 55);
       pr.andou += Math.hypot(this.player.x - pr.ux, this.player.y - pr.uy);
       pr.ux = this.player.x; pr.uy = this.player.y;
       pronto = pr.andou > 380;
     } else if (id === 'atirar') {
       pronto = this.kills - pr.killsIni >= 30;
-      this.manterOnda(dt, 2.5, 10, 50);
+      this.manterOnda(dt, 2.5, 12, 60);
+      this.surpresaPrologo(pr, 12, 'sub1', () => this.subchefePrologo());   // ~40 s: primeiro subchefe
     } else if (id === 'joias') {
       pronto = !!pr.eventos.carta;
       this.apontarSeta(this.gemaMaisPerto());
       if (!this.gemaMaisPerto()) this.dropGem(this.player.x + 150, this.player.y, 3);
     } else if (id === 'cartas') pronto = !!pr.eventos.fechou;
-    else if (id === 'horda') this.manterOnda(dt, 2, 14, 110);
+    else if (id === 'horda') {
+      this.manterOnda(dt, 2, 14, 110);
+      this.surpresaPrologo(pr, 6, 'enxame1', () => { this.spawnSwarm(); this.banner(tx('ENXAME!'), '#fde047'); });
+      this.surpresaPrologo(pr, 16, 'sub2', () => this.subchefePrologo());
+      this.surpresaPrologo(pr, 28, 'sub3', () => { this.subchefePrologo(); this.subchefePrologo(); });
+    }
     else if (id === 'bau') {
       pronto = !!pr.eventos.bau;
       let bau = null; this.pickups.children.iterate((p) => { if (p && p.active && p.ptype === 'chest') bau = p; });
@@ -183,6 +192,8 @@ Object.assign(GameScene.prototype, {
     else if (id === 'cerco') { this.manterOnda(dt, 1.6, 14, 140); if (pr.t > 12 && pr.t < 13) this.spawnRing(); }
     else if (id === 'subchefe') { pronto = this.subchefesMortos > pr.subIni; this.manterOnda(dt, 3, 8, 60); }
     else if (id === 'chefe') { pronto = this.chefesMortos > pr.chefeIni; this.manterOnda(dt, 3, 8, 60); }
+    else if (id === 'vitoria') this.manterOnda(dt, 1, 16, 90);          // a ação não para depois do chefe
+    else if (id === 'naveMae') this.manterOnda(dt, 0.8, 18, 140);      // a nave-mãe chega com um exército
     if (pr.t >= passo.min && (pronto || pr.t >= passo.max || passo.min === passo.max)) {
       if (id === 'chefe' && !pronto) {   // demorou demais: o chefe cai (o prólogo não pode travar)
         this.enemies.children.iterate((e) => { if (e && e.active && e.isBoss) this.damageTarget(e, e.hp + 1); });
@@ -220,6 +231,22 @@ Object.assign(GameScene.prototype, {
     }
     if (nome === 'bau' && id === 'bau') this.falaPrologo(tx('Escolha um dos 3 baús. É surpresa!'));
   },
+  // Depois da lição das cartas, subir de nível no prólogo escolhe sozinho a RECOMENDADA, com um
+  // aviso rápido, sem parar a ação (o menu de cartas só volta para mostrar a arma suprema).
+  nivelAutomaticoPrologo() {
+    const pr = this.pr;
+    if (!pr || !pr.cartaExplicada || this.forcarSuprema) return false;
+    let options = this.pickWeighted(this.upgradeOptions(), 3);
+    if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
+    if (!options.length) return true;
+    const o = options[this.indiceRecomendado(options)];
+    this.applyOption(o);
+    const nome = o.kind === 'weapon' ? WEAPONS[o.id].name : o.kind === 'passive' ? PASSIVES[o.id].name : o.kind === 'sobrecarga' ? SOBRECARGAS[o.id].nome : '';
+    this.floatText(this.player.x, this.player.y - 40, tx('NÍVEL {n}!', { n: this.level }) + (nome ? '  +' + nome : ''), '#fde047');
+    this.boom(this.player.x, this.player.y, 10, 0xfde047);
+    this.openNextModal();   // se subiu vários níveis de uma vez, segue para o próximo
+    return true;
+  },
   cartaTemSuprema() { return this.modal && this.modal.options && this.modal.options.some((o) => o.kind === 'weapon' && WEAPONS[o.id].suprema); },
   // mãozinha pulando em cima da carta recomendada
   maoNaRecomendada() {
@@ -254,10 +281,20 @@ Object.assign(GameScene.prototype, {
     return gema;
   },
 
+  // acontece uma vez só, quando o passo chega em "segundos"
+  surpresaPrologo(pr, segundos, chave, fn) {
+    if (pr.t >= segundos && !pr.eventos[chave]) { pr.eventos[chave] = true; fn(); }
+  },
+  subchefePrologo() {
+    const p = this.spawnPoint();
+    this.spawnElite(p.x, p.y);
+    this.enemies.children.iterate((e) => { if (e && e.active && e.isElite && !e.__prologo) { e.__prologo = true; e.hp *= 0.5; e.maxHp *= 0.5; } });   // cai rápido
+  },
+
   // monstros do roteiro: n de uma vez, em volta da tela
   ondaPrologo(n) {
     const lista = INIMIGOS_POR_GALAXIA[this.gi];
-    const ate = Math.min(lista.length, 2 + Math.floor((this.pr ? this.pr.i : 0) / 2));   // tipos mais fortes aparecem com o tempo
+    const ate = Math.min(lista.length, 3 + (this.pr ? this.pr.i : 0));   // mais tipos de monstro a cada passo
     for (let k = 0; k < n; k++) this.spawnEnemy(lista[Math.floor(Math.random() * ate)]);
   },
   // de "cada" em "cada" segundos, nascem "n" monstros, sem passar de "max" vivos
@@ -282,7 +319,7 @@ Object.assign(GameScene.prototype, {
   chegarNaveMaePrologo() {
     tocarSom(this, 'chefe');
     this.falaPrologo(tx('O que é aquilo?!'), '#fca5a5');
-    this.cameras.main.flash(500, 255, 255, 255);
+    clarao(this, 500, 0xffffff);
     this.cameras.main.shake(900, 0.012);
     this.banner(tx('A NAVE-MÃE CHEGOU!'), '#f87171');
     // a nave-mãe: enorme, escura, desce do alto
@@ -322,7 +359,7 @@ Object.assign(GameScene.prototype, {
       this.boom(px, py, 40, 0xffffff);
       this.player.setVisible(false);
       raio.destroy(); nucleo.destroy();
-      this.cameras.main.flash(400, 255, 255, 255);
+      clarao(this, 400, 0xffffff);
     });
     this.time.delayedCall(3600, () => {
       this.cameras.main.fadeOut(1200, 0, 0, 0);
@@ -367,16 +404,24 @@ Object.assign(GameScene.prototype, {
         const e = fixo(this.add.rectangle(W / 2 + Math.cos(a) * r, H / 2 + Math.sin(a) * r, 3, 3, 0xffffff, 1));
         this.tweens.add({ targets: e, x: W / 2, y: H / 2, alpha: 0, duration: 900 + Math.random() * 700 });
       }
-      this.time.delayedCall(1500, () => { this.cameras.main.flash(900, 255, 255, 255); fala.setText(tx('Muitos anos antes...')).setColor('#ffffff'); falarTexto(tx('Muitos anos antes...')); });
+      this.time.delayedCall(1500, () => { clarao(this, 900, 0xffffff); fala.setText(tx('Muitos anos antes...')).setColor('#ffffff'); falarTexto(tx('Muitos anos antes...')); });
     });
     this.time.delayedCall(14500, () => this.terminarPrologo());
   },
 
   terminarPrologo() {
     if (this.pr && this.pr.terminou) return;
+    const viuAteOFim = !!(this.pr && this.pr.acabando);   // pulou a história? então não ganha a conquista
     if (this.pr) this.pr.terminou = true;
     PREFS.prologoVisto = true;
     salvarPrefs();
+    if (viuAteOFim && !SAVE.stats.prologo) {
+      // conquista "Viajante do Tempo" (RN-77): aparece no menu com o aviso de conquista
+      SAVE.stats.prologo = true;
+      const novas = verificarConquistas(SAVE, Date.now());
+      writeSave(SAVE);
+      novas.forEach((c) => CONQUISTA_NOVA.push(c));   // o menu mostra o aviso (src/telas.js)
+    }
     try { if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel(); } catch (e) { /* ok */ }
     if (typeof MENU_INICIAL !== 'undefined') MENU_INICIAL.mostrado = false;   // cai no menu do jogo
     this.scene.start('Hangar');
