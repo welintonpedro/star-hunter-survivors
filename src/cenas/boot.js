@@ -5,9 +5,11 @@ class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
   create() {
     SHIPS.forEach((s) => pixelTexture(this, 'ship_' + s.id, ART[s.art], s.palette, 3));
-    galaxiaDistante(this, 'galaxia_distante');   // usada no fundo de cada galáxia
+    galaxiaDistante(this, 'galaxia_distante');
+    tirosDeChefeTexturas(this);   // usada no fundo de cada galáxia
     GALAXIES.forEach((g, i) => {
-      bossTexture(this, 'boss_' + i, g);
+      bossTexture(this, 'navemae_' + i, g);   // desenho antigo: agora é a nave-mãe
+      chefeTexture(this, 'boss_' + i, g, i);   // chefe próprio de cada galáxia (RN-85)
       planetTexture(this, 'planet_' + i, g.planet);
       planetasDaGalaxia(this, i, g);                       // planetas com volume
       gfxTexture(this, 'nest_' + i, 120, 120, (gr) => {

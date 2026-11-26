@@ -31,6 +31,88 @@ function bossTexture(scene, key, gal) {
     g.fillStyle(0x000000); g.fillCircle(56, 56, 6);
   });
 }
+// ============ CHEFES DA GALÁXIA (RN-85): um desenho próprio por galáxia, 176×176 ============
+const TAM_CHEFE = 176;
+function chefeTexture(scene, key, gal, i) {
+  const a = hexToInt(gal.alien.a), b = hexToInt(gal.alien.b), c = hexToInt(gal.alien.c), d = hexToInt(gal.alien.d);
+  const desenhos = [_chefeColmeia, _chefeEncouracado, _chefeOlho];
+  gfxTexture(scene, key, TAM_CHEFE, TAM_CHEFE, (g) => desenhos[i % 3](g, a, b, c, d));
+}
+// Rainha Colmeia: inseto gigante visto de cima, cabeça para cima
+function _chefeColmeia(g, a, b, c, d) {
+  g.fillStyle(0xbbf7d0, 0.28);                                   // asas transparentes
+  g.fillEllipse(36, 70, 72, 30); g.fillEllipse(140, 70, 72, 30);
+  g.fillEllipse(42, 98, 60, 22); g.fillEllipse(134, 98, 60, 22);
+  g.lineStyle(2, 0xdcfce7, 0.5); g.strokeEllipse(36, 70, 72, 30); g.strokeEllipse(140, 70, 72, 30);
+  g.lineStyle(6, a, 1);                                           // patas
+  [[-1, 70, 30, 52], [-1, 84, 26, 92], [-1, 96, 34, 130], [1, 70, 146, 52], [1, 84, 150, 92], [1, 96, 142, 130]]
+    .forEach(([, y, x2, y2]) => { g.beginPath(); g.moveTo(88, y); g.lineTo(x2, y2); g.strokePath(); });
+  g.fillStyle(a); g.fillEllipse(88, 126, 66, 84);                 // abdômen com listras
+  g.fillStyle(d); g.fillEllipse(88, 124, 56, 74);
+  g.fillStyle(b); [104, 120, 136, 150].forEach((y, k) => g.fillRect(88 - (24 - k * 4), y, (24 - k * 4) * 2, 5));
+  g.fillStyle(c); g.fillTriangle(80, 160, 96, 160, 88, 174);      // ferrão brilhando
+  g.fillStyle(a); g.fillCircle(88, 80, 28);                       // tórax
+  g.fillStyle(b); g.fillCircle(88, 78, 23);
+  g.fillStyle(d); g.fillCircle(88, 80, 10);
+  g.fillStyle(a); g.fillCircle(88, 44, 26);                       // cabeça
+  g.fillStyle(b); g.fillCircle(88, 44, 21);
+  g.fillStyle(c); [[68, 22], [80, 14], [96, 14], [108, 22]].forEach(([x, y]) => g.fillTriangle(x - 5, y + 10, x + 5, y + 10, x, y - 4));   // coroa
+  g.fillStyle(c); g.fillEllipse(77, 42, 15, 19); g.fillEllipse(99, 42, 15, 19);   // olhos
+  g.fillStyle(0x000000); g.fillEllipse(78, 44, 6, 10); g.fillEllipse(98, 44, 6, 10);
+  g.fillStyle(0xffffff); g.fillCircle(74, 37, 2.5); g.fillCircle(96, 37, 2.5);
+  g.fillStyle(a); g.fillTriangle(76, 60, 84, 62, 72, 76); g.fillTriangle(100, 60, 92, 62, 104, 76);   // mandíbulas
+}
+// Encouraçado Carmesim: nave de guerra alienígena, bico para cima
+function _chefeEncouracado(g, a, b, c, d) {
+  g.fillStyle(0xfb923c, 0.5); [60, 88, 116].forEach((x) => g.fillEllipse(x, 166, 16, 20));   // fogo dos motores
+  g.fillStyle(0xfde047, 0.9); [60, 88, 116].forEach((x) => g.fillEllipse(x, 162, 8, 12));
+  g.fillStyle(a);                                                  // asas
+  g.fillTriangle(10, 128, 60, 70, 60, 140); g.fillTriangle(166, 128, 116, 70, 116, 140);
+  g.fillStyle(d); g.fillTriangle(20, 124, 58, 82, 58, 132); g.fillTriangle(156, 124, 118, 82, 118, 132);
+  g.fillStyle(a); g.fillPoints([{ x: 88, y: 4 }, { x: 128, y: 70 }, { x: 132, y: 150 }, { x: 44, y: 150 }, { x: 48, y: 70 }], true);   // casco
+  g.fillStyle(b); g.fillPoints([{ x: 88, y: 14 }, { x: 120, y: 72 }, { x: 122, y: 142 }, { x: 54, y: 142 }, { x: 56, y: 72 }], true);
+  g.fillStyle(d); g.fillRect(64, 90, 48, 44);                       // placas de blindagem
+  g.lineStyle(2, a, 1); [100, 112, 124].forEach((y) => { g.beginPath(); g.moveTo(64, y); g.lineTo(112, y); g.strokePath(); });
+  g.fillStyle(0x1c1917); [[60, 150], [88, 150], [116, 150]].forEach(([x, y]) => g.fillRect(x - 7, y, 14, 10));   // motores
+  [[34, 108], [142, 108]].forEach(([x, y]) => {                    // torres de canhão
+    g.fillStyle(0x1c1917); g.fillRect(x - 4, y - 34, 8, 30);
+    g.fillStyle(c); g.fillRect(x - 3, y - 38, 6, 5);
+    g.fillStyle(a); g.fillCircle(x, y, 14); g.fillStyle(b); g.fillCircle(x, y, 10); g.fillStyle(c); g.fillCircle(x, y, 4);
+  });
+  g.fillStyle(0x1c1917); g.fillRect(84, 0, 8, 30);                 // canhão do bico
+  g.fillStyle(a); g.fillRect(74, 44, 28, 22);                      // ponte com janela brilhando
+  g.fillStyle(c); g.fillRect(78, 50, 20, 7);
+  g.fillStyle(0xffffff); g.fillCircle(88, 112, 9); g.fillStyle(c); g.fillCircle(88, 112, 6);   // núcleo
+}
+// Olho do Abismo: criatura cósmica com tentáculos (gira devagar)
+function _chefeOlho(g, a, b, c, d) {
+  for (let k = 0; k < 8; k++) {                                   // tentáculos curvos
+    const base = k * Math.PI / 4;
+    for (let j = 0; j < 9; j++) {
+      const r = 46 + j * 5, an = base + j * 0.09;
+      g.fillStyle(j % 2 ? d : a); g.fillCircle(88 + Math.cos(an) * r, 88 + Math.sin(an) * r, 9 - j * 0.8);
+    }
+    g.fillStyle(c); g.fillCircle(88 + Math.cos(base + 0.8) * 89, 88 + Math.sin(base + 0.8) * 89, 3);
+  }
+  g.fillStyle(a); g.fillCircle(88, 88, 52);
+  g.fillStyle(b); g.fillCircle(88, 88, 46);
+  g.fillStyle(d); for (let k = 0; k < 10; k++) { const an = k * Math.PI / 5; g.fillCircle(88 + Math.cos(an) * 36, 88 + Math.sin(an) * 36, 5); }
+  g.fillStyle(c); for (let k = 0; k < 10; k++) {                    // espinhos de cristal
+    const an = k * Math.PI / 5 + 0.3, x = 88 + Math.cos(an) * 50, y = 88 + Math.sin(an) * 50;
+    g.fillTriangle(x + Math.cos(an + 1.6) * 5, y + Math.sin(an + 1.6) * 5, x - Math.cos(an + 1.6) * 5, y - Math.sin(an + 1.6) * 5, x + Math.cos(an) * 14, y + Math.sin(an) * 14);
+  }
+  g.fillStyle(0xffffff); g.fillCircle(88, 88, 27);                 // olho
+  g.fillStyle(c); g.fillCircle(88, 88, 19);
+  g.fillStyle(b); g.fillCircle(88, 88, 12);
+  g.fillStyle(0x000000); g.fillEllipse(88, 88, 7, 24);              // pupila em fenda
+  g.fillStyle(0xffffff); g.fillCircle(80, 80, 4); g.fillCircle(96, 95, 2);
+}
+// Tiros dos chefes (brilhantes, cada chefe com o seu)
+function tirosDeChefeTexturas(scene) {
+  gfxTexture(scene, 'tiro_acido', 16, 16, (g) => { g.fillStyle(0x4ade80, 0.35); g.fillCircle(8, 8, 8); g.fillStyle(0x86efac); g.fillCircle(8, 8, 5); g.fillStyle(0xf7fee7); g.fillCircle(8, 8, 2); });
+  gfxTexture(scene, 'tiro_plasma', 12, 24, (g) => { g.fillStyle(0xf97316, 0.4); g.fillEllipse(6, 12, 12, 24); g.fillStyle(0xfb923c); g.fillEllipse(6, 12, 8, 18); g.fillStyle(0xfef3c7); g.fillEllipse(6, 11, 4, 10); });
+  gfxTexture(scene, 'tiro_cristal', 16, 16, (g) => { g.fillStyle(0xa855f7, 0.45); g.fillTriangle(8, 0, 16, 8, 8, 16); g.fillTriangle(8, 0, 0, 8, 8, 16); g.fillStyle(0x67e8f9); g.fillTriangle(8, 3, 13, 8, 8, 13); g.fillTriangle(8, 3, 3, 8, 8, 13); g.fillStyle(0xffffff); g.fillCircle(8, 8, 2); });
+}
 function planetTexture(scene, key, cols) {
   const a = hexToInt(cols[0]), b = hexToInt(cols[1]);
   gfxTexture(scene, key, 200, 200, (g) => {

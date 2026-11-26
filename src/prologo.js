@@ -184,7 +184,7 @@ Object.assign(GameScene.prototype, {
       if (!pronto && !this.modal && pr.t > 3) pronto = true;
     }
     else if (id === 'horda') {
-      this.manterOnda(dt, 2, 14, 110);
+      this.manterOnda(dt, 2, 12, 90);   // horda: cheia, mas sem sufocar
       this.surpresaPrologo(pr, 6, 'enxame1', () => { this.spawnSwarm(); this.banner(tx('ENXAME!'), '#fde047'); });
       this.surpresaPrologo(pr, 16, 'sub2', () => this.subchefePrologo());
       this.surpresaPrologo(pr, 28, 'sub3', () => { this.subchefePrologo(); this.subchefePrologo(); });
@@ -341,7 +341,7 @@ Object.assign(GameScene.prototype, {
     this.cameras.main.shake(900, 0.012);
     this.banner(tx('A NAVE-MÃE CHEGOU!'), '#f87171');
     // a nave-mãe: enorme, escura, desce do alto
-    const m = this.physics.add.sprite(this.player.x, this.player.y - 420, 'boss_' + this.gi).setScale(5.5).setDepth(9).setTint(0x450a0a);
+    const m = this.physics.add.sprite(this.player.x, this.player.y - 420, 'navemae_' + this.gi).setScale(5.5).setDepth(9).setTint(0x450a0a);
     this.naveMaePrologo = m;
     this.tweens.add({ targets: m, y: this.player.y - 210, duration: 2600, ease: 'Sine.easeOut' });
     this.tweens.add({ targets: m, angle: 360, duration: 9000, repeat: -1 });

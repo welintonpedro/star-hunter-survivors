@@ -2,7 +2,7 @@
 // Funcionam em qualquer cena (pausa da partida ou hangar). Devolvem uma função que fecha a tela.
 
 function _telaBase(scene, titulo, aoFechar) {
-  const D = 1000, partes = [];   // acima de tudo, inclusive do painel do modo de teste
+  const D = 1100, partes = [];   // acima de tudo, inclusive do menu principal (1000) e do painel do modo de teste
   const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
   fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.75).setInteractive());
   fixo(scene.add.rectangle(W / 2, H / 2, 920, 510, 0x0b1220).setStrokeStyle(3, 0x60a5fa), 1);
@@ -77,9 +77,9 @@ function abrirConquistas(scene, aoFechar) {
   const porColuna = Math.ceil(CONQUISTAS.length / 2);
   CONQUISTAS.forEach((c, i) => {
     const col = Math.floor(i / porColuna), lin = i % porColuna;
-    const x = W / 2 - 440 + col * 450, y = 84 + lin * 40;
+    const x = W / 2 - 440 + col * 450, y = 76 + lin * 37;   // 11 linhas cabem acima do FECHAR
     const ok = !!SAVE.conquistas[c.id];
-    fixo(scene.add.rectangle(x + 215, y + 16, 436, 36, ok ? 0x14532d : 0x111827, 0.85).setStrokeStyle(1, ok ? 0x4ade80 : 0x334155), 1);
+    fixo(scene.add.rectangle(x + 215, y + 16, 436, 34, ok ? 0x14532d : 0x111827, 0.85).setStrokeStyle(1, ok ? 0x4ade80 : 0x334155), 1);
     fixo(scene.add.text(x + 14, y + 16, ok ? '✓' : '•', { fontFamily: 'Arial', fontSize: '18px', color: ok ? '#4ade80' : '#475569', fontStyle: 'bold' }).setOrigin(0.5), 2);
     fixo(scene.add.text(x + 30, y + 3, c.nome + '  —  ' + c.desc, { fontFamily: 'Arial', fontSize: '12px', color: ok ? '#fde047' : '#e2e8f0', fontStyle: ok ? 'bold' : 'normal' }), 2);
     const nomeArma = c.premio.arma ? WEAPONS[c.premio.arma].name : '';

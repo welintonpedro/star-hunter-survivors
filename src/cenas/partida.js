@@ -79,6 +79,7 @@ class GameScene extends Phaser.Scene {
     this.addWeapon(ship.start);
 
     this.setupInput();
+    this.criarSetasChefe();   // antes do HUD: o minimapa enche a lista de alvos das setas
     this.createHUD();
     this.criarAjudasDeControle();   // botão MOVER no celular, teclas no computador (src/ajudas.js)
     if (MODO_TESTE) criarPainelTeste(this);
@@ -552,8 +553,12 @@ class GameScene extends Phaser.Scene {
     this.pickups.children.iterate((pk) => {
       if (pk && pk.active && (pk.ptype === 'chest' || pk.ptype === 'weapon')) { g.fillStyle(0xfacc15, 1); g.fillCircle(mx(pk.x), my(pk.y), 2.5); }
     });
+    const alvos = this.alvosSeta; alvos.length = 0;   // lista reaproveitada para as setas (RN-84)
     this.enemies.children.iterate((e) => {
-      if (e && e.active && (e.isElite || e.isBoss)) { g.fillStyle(0xff3b3b, 1); g.fillCircle(mx(e.x), my(e.y), e.isBoss ? 4 : 3); }
+      if (e && e.active && (e.isElite || e.isBoss)) {
+        g.fillStyle(0xff3b3b, 1); g.fillCircle(mx(e.x), my(e.y), e.isBoss ? 4 : 3);
+        if (e.isBoss) alvos.unshift(e); else alvos.push(e);   // chefe primeiro
+      }
     });
     // moldura da tela, cortada na emenda para não sair do quadro
     const cam = this.cameras.main;
@@ -618,7 +623,7 @@ class GameScene extends Phaser.Scene {
         const v = b.body.velocity, spd = Math.hypot(v.x, v.y) || 1;
         const atual = Math.atan2(v.y, v.x), alvo = Math.atan2(this.player.y - b.y, this.player.x - b.x);
         const ang = atual + clamp(Phaser.Math.Angle.Wrap(alvo - atual), -1.6 * dt, 1.6 * dt);
-        b.setVelocity(Math.cos(ang) * spd, Math.sin(ang) * spd); b.rotation = ang;
+        b.setVelocity(Math.cos(ang) * spd, Math.sin(ang) * spd); b.rotation = ang + Math.PI / 2;
       }
     });
 
@@ -639,7 +644,30 @@ class GameScene extends Phaser.Scene {
     }
     this.minimapTimer -= dt;
     if (this.minimapTimer <= 0) { this.minimapTimer = 0.12; this.drawMinimap(); }
+    this.updateSetasChefe(dt);
     this.updateHUD();
+  }
+
+  // Setas perto da nave apontando subchefes (laranja) e chefes (vermelha, maior) fora da tela (RN-84)
+  criarSetasChefe() {
+    this.alvosSeta = [];
+    this.setasChefe = [];
+    for (let i = 0; i < 4; i++) {
+      this.setasChefe.push(this.add.triangle(0, 0, 0, -12, 26, 0, 0, 12, 0xfb923c).setStrokeStyle(3, 0x000000).setDepth(16).setVisible(false));
+    }
+  }
+  updateSetasChefe() {
+    const v = this.cameras.main.worldView, px = this.player.x, py = this.player.y;
+    const pulso = 1 + Math.sin(this.elapsed * 8) * 0.12;
+    for (let i = 0; i < this.setasChefe.length; i++) {
+      const s = this.setasChefe[i], e = this.alvosSeta[i];
+      if (!e || !e.active || this.ended) { s.setVisible(false); continue; }
+      const ex = aproximar(e.x, px, WORLD), ey = aproximar(e.y, py, WORLD);
+      if (v.contains(ex, ey)) { s.setVisible(false); continue; }   // já está na tela: sem seta
+      const a = Math.atan2(ey - py, ex - px), r = e.isBoss ? 104 : 90;
+      s.setVisible(true).setPosition(px + Math.cos(a) * r, py + Math.sin(a) * r).setRotation(a)
+        .setFillStyle(e.isBoss ? 0xef4444 : 0xfb923c).setScale((e.isBoss ? 1.4 : 1) * pulso);
+    }
   }
 
   bankCredits() {
@@ -836,18 +864,20 @@ class GameScene extends Phaser.Scene {
     e.setTexture(key).setScale(c.tamanho);
     e.enableBody(true, p.x, p.y, true, true);
     e.setDepth(6).clearTint();
-    e.body.setCircle(50, e.width / 2 - 50, e.height / 2 - 50);
+    e.setRotation(0);
+    e.body.setCircle(62, e.width / 2 - 62, e.height / 2 - 62);
     e.hp = e.maxHp = 1600 * this.gal.hpMult * c.vida * this.fatorExtra() * (this.modo === 'arena' ? 0.6 : 1);
     e.isRival = false;
     e.speedV = 60 * this.gal.speedMult;
     e.damage = 30 * Math.sqrt(this.gal.hpMult) * c.dano;
     e.danoTiro = c.dano;
-    e.reward = 0; e.xpVal = 20; e.hitR = 50 * c.tamanho;
+    e.reward = 0; e.xpVal = 20; e.hitR = 62 * c.tamanho;
+    e.ataque = (this.gal.chefe && this.gal.chefe.ataque) || 'cristais'; e.giro = 0; e.espiral = 0; e.espiralT = 0;
     e.isBoss = true; e.isElite = false; e.straight = null; e.chefe = i || 0;
     e.flash = 0; e.orbHit = 0; e.kbT = 0; e.flank = 0; e.shootT = 2; e.burst = 0;
     this.boss = e;
     this.bossBar.setFillStyle(hexToInt(this.gal.alien.b));
-    this.banner(tx('ALERTA: CHEFE DA GALÁXIA {n}/{total}!', { n: (i || 0) + 1, total: EVENTOS.chefes.length }), '#f87171');
+    this.banner(tx('ALERTA: CHEFE DA GALÁXIA {n}/{total}!', { n: (i || 0) + 1, total: EVENTOS.chefes.length }) + (this.gal.chefe ? '\n' + tx(this.gal.chefe.nome) : ''), '#f87171');
   }
 
   // Nave-mãe aos 30:00: registra a vitória e vem destruir o jogador (RN-01, RN-02)
@@ -861,7 +891,7 @@ class GameScene extends Phaser.Scene {
     this.bonus += bonus; this.runCredits += bonus;
     writeSave(SAVE);
     const p = this.spawnPoint();
-    const m = this.physics.add.sprite(p.x, p.y, 'boss_' + this.gi).setScale(3.2).setDepth(9).setTint(0x7f1d1d);
+    const m = this.physics.add.sprite(p.x, p.y, 'navemae_' + this.gi).setScale(3.2).setDepth(9).setTint(0x7f1d1d);
     m.body.setCircle(50, m.width / 2 - 50, m.height / 2 - 50);
     m.tiroT = 1.2;
     this.naveMae = m;
@@ -974,28 +1004,66 @@ class GameScene extends Phaser.Scene {
     }
   }
 
+  // Chefes da galáxia (RN-85): cada um com o seu jeito de atacar e tiros com visual próprio
+  // esporos = Rainha Colmeia (espirais de ácido), plasma = Encouraçado Carmesim (canhões e mísseis),
+  // cristais = Olho do Abismo (anéis de cristal e cristais que perseguem)
   updateBoss(e, dt) {
-    e.rotation += dt * 0.6;
-    e.shootT -= dt;
-    if (e.shootT <= 0) {
-      e.shootT = 2.0;
-      e.burst++;
-      const n = 18, off = (e.burst % 2) * (Math.PI / n);
-      const forte = (b) => { if (b) b.dmg *= e.danoTiro || 1; };
-      for (let i = 0; i < n; i++) forte(this.enemyShot(e.x, e.y, i / n * Math.PI * 2 + off, 190));
-      if (e.burst % 3 === 0) {
-        const base = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
-        [-0.2, 0, 0.2].forEach((o) => forte(this.enemyShot(e.x, e.y, base + o, 280)));
+    const mira = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
+    if (e.ataque === 'cristais') e.rotation += dt * 0.4;   // a criatura gira devagar
+    else e.rotation += Phaser.Math.Angle.Wrap(mira + Math.PI / 2 - e.rotation) * Math.min(1, dt * 2);   // vira para a nave
+    // espiral de ácido em andamento
+    if (e.espiral > 0) {
+      e.espiral -= dt; e.espiralT -= dt;
+      if (e.espiralT <= 0) {
+        e.espiralT = 0.12; e.giro += 0.38;
+        for (let k = 0; k < 2; k++) this.tiroChefe(e, e.x, e.y, e.giro + k * Math.PI, 175, 'tiro_acido');
       }
-      if (e.burst % 4 === 0) for (let i = 0; i < 6; i++) this.spawnEnemy('diamond', e.x + (Math.random() - 0.5) * 80, e.y + (Math.random() - 0.5) * 80);
     }
+    e.shootT -= dt;
+    if (e.shootT > 0) return;
+    e.shootT = 2.0;
+    e.burst++;
+    const anel = (n, vel, tex, off) => { for (let i = 0; i < n; i++) this.tiroChefe(e, e.x, e.y, i / n * Math.PI * 2 + (off || 0), vel, tex); };
+    if (e.ataque === 'esporos') {
+      if (e.burst % 2) { e.espiral = 1.2; e.espiralT = 0; }
+      else { anel(14, 150, 'tiro_acido', e.burst * 0.2); [-0.15, 0, 0.15].forEach((o) => this.tiroChefe(e, e.x, e.y, mira + o, 270, 'tiro_acido')); }
+    } else if (e.ataque === 'plasma') {
+      // rajada dos dois canhões laterais
+      const lado = e.hitR * 0.55;
+      [-1, 1].forEach((s) => {
+        const cx = e.x + Math.cos(mira + Math.PI / 2) * lado * s, cy = e.y + Math.sin(mira + Math.PI / 2) * lado * s;
+        for (let k = -2; k <= 2; k++) this.tiroChefe(e, cx, cy, mira + k * 0.11, 300, 'tiro_plasma');
+      });
+      if (e.burst % 2 === 0) for (let k = 0; k < 4; k++) {
+        const b = this.tiroChefe(e, e.x, e.y, mira + Math.PI + (k - 1.5) * 0.5, 170, 'tiro_plasma');
+        if (b) { b.teleguiado = true; b.life = 5; }
+      }
+      if (e.burst % 3 === 0) anel(20, 190, 'tiro_plasma', 0);
+    } else {
+      anel(16, 170, 'tiro_cristal', (e.burst % 2) * Math.PI / 16);
+      if (e.burst % 2 === 0) this.time.delayedCall(300, () => { if (e.active && !this.ended) anel(16, 120, 'tiro_cristal', Math.PI / 32); });
+      if (e.burst % 3 === 0) for (let k = 0; k < 5; k++) {
+        const b = this.tiroChefe(e, e.x, e.y, mira + (k - 2) * 0.6, 140, 'tiro_cristal');
+        if (b) { b.teleguiado = true; b.life = 5; }
+      }
+    }
+    if (e.burst % 4 === 0) for (let i = 0; i < 6; i++) this.spawnEnemy('diamond', e.x + (Math.random() - 0.5) * 80, e.y + (Math.random() - 0.5) * 80);
+  }
+  // tiro de chefe: textura própria, gira na direção em que voa
+  tiroChefe(e, x, y, a, vel, tex) {
+    const b = this.enemyShot(x, y, a, vel);
+    if (!b) return null;
+    b.setTexture(tex).setRotation(a + Math.PI / 2);
+    if (tex === 'tiro_plasma') b.body.setCircle(5, 1, 7); else b.body.setCircle(6, 2, 2);
+    b.dmg *= e.danoTiro || 1;
+    return b;
   }
 
   enemyShot(x, y, a, spd) {
     const b = this.ebullets.get(x, y, 'ebullet');
     if (!b) return;
     b.enableBody(true, x, y, true, true);
-    b.setTexture('ebullet').clearTint().setDepth(7);
+    b.setTexture('ebullet').clearTint().setDepth(7).setRotation(0);
     b.teleguiado = false;
     b.body.setCircle(5, 1, 1);
     b.setVelocity(Math.cos(a) * spd, Math.sin(a) * spd);
