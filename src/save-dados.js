@@ -8,7 +8,8 @@ const SAVE_KEY = 'star_hunter_survivors_save_v1';
 //   2 → save ganhou número de versão (E1)
 //   3 → ganho offline removido: sai a melhoria "Drones de Coleta" (meta.idle) e o bestRate
 //   4 → combos descobertos, conquistas e estatísticas entre partidas (E8, E9)
-const SAVE_VERSION = 4;
+//   5 → recordes do modo infinito e da arena (RN-68, RN-69); saves antigos começam sem recorde
+const SAVE_VERSION = 5;
 
 // Estatísticas somadas entre partidas (usadas pelas conquistas)
 function statsIniciais() {
@@ -21,11 +22,19 @@ function statsIniciais() {
   };
 }
 
+// Recordes dos modos infinito e arena
+function recordesIniciais() {
+  return {
+    infinito: {},   // nave → { pontos, tempo, abates }
+    arena: { partidas: 0, vitorias: 0, melhor: 0 }   // melhor = melhor colocação (1 = venceu); 0 = nunca jogou
+  };
+}
+
 function saveInicial(agora) {
   return {
     versao: SAVE_VERSION, credits: 0, owned: { falcao: true }, cleared: [false, false, false],
     meta: { dmg: 0, hp: 0, rate: 0, magnet: 0 }, lastSeen: agora,
-    combos: [], conquistas: {}, stats: statsIniciais()
+    combos: [], conquistas: {}, stats: statsIniciais(), recordes: recordesIniciais()
   };
 }
 const _obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
@@ -64,6 +73,19 @@ function corrigirSave(bruto, navesValidas, agora) {
     if (Array.isArray(v)) s.stats.locais[k] = [...new Set(v.filter((i) => Number.isInteger(i) && i >= 0))];
   });
   Object.entries(_obj(st.armasAchadas)).forEach(([k, v]) => { const n = inteiroPositivo(v); if (n) s.stats.armasAchadas[k] = n; });
+
+  // recordes (v5)
+  const rec = _obj(bruto.recordes);
+  Object.entries(_obj(rec.infinito)).forEach(([nave, r]) => {
+    if (!navesValidas.includes(nave)) return;
+    const o = _obj(r);
+    if (_num(o.pontos)) s.recordes.infinito[nave] = { pontos: inteiroPositivo(o.pontos), tempo: _num(o.tempo), abates: inteiroPositivo(o.abates) };
+  });
+  const ar = _obj(rec.arena);
+  s.recordes.arena.partidas = inteiroPositivo(ar.partidas);
+  s.recordes.arena.vitorias = Math.min(s.recordes.arena.partidas, inteiroPositivo(ar.vitorias));
+  const melhor = inteiroPositivo(ar.melhor);
+  s.recordes.arena.melhor = melhor >= 1 && melhor <= 10 ? melhor : 0;
 
   const visto = bruto.lastSeen;
   s.lastSeen = typeof visto === 'number' && Number.isFinite(visto) && visto <= agora ? visto : agora;
@@ -120,5 +142,5 @@ function gravarSave(storage, save, agora) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { SAVE_KEY, SAVE_VERSION, saveInicial, statsIniciais, corrigirSave, lerSave, gravarSave };
+  module.exports = { SAVE_KEY, SAVE_VERSION, saveInicial, statsIniciais, recordesIniciais, corrigirSave, lerSave, gravarSave };
 }

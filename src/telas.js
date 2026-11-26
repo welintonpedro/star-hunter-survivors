@@ -209,3 +209,33 @@ function abrirIdiomas(scene, voltarAoMenu) {
   });
   return { partes, fechar };
 }
+
+// ============ ESCOLHA DO MODO (RN-68, RN-69) ============
+// Abre ao tocar em JOGAR no hangar: campanha, infinito ou arena, com os recordes de cada um.
+function abrirEscolhaDeModo(scene, naveIndex) {
+  const D = 1000, partes = [], nave = SHIPS[naveIndex];
+  const fixo = (o, d) => { partes.push(o.setScrollFactor(0).setDepth(D + (d || 0))); return o; };
+  const fechar = () => partes.forEach((p) => p.destroy());
+  fixo(scene.add.rectangle(W / 2, H / 2, W, H, 0x050814, 0.96).setInteractive());
+  fixo(scene.add.text(W / 2, 62, tx('ESCOLHA O MODO'), { fontFamily: 'Arial Black, Arial', fontSize: '26px', color: '#a5f3fc', stroke: '#000000', strokeThickness: 5 }).setOrigin(0.5), 2);
+  fixo(scene.add.text(W / 2, 94, nave.name + '  •  ' + GALAXIES[nave.galaxy].name, { fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1' }).setOrigin(0.5), 2);
+  const rec = SAVE.recordes.infinito[nave.id], ar = SAVE.recordes.arena;
+  const modos = [
+    { id: 'campanha', nome: tx('CAMPANHA'), desc: tx('Sobreviva 30 minutos e conquiste a galáxia'),
+      info: SAVE.cleared[nave.galaxy] ? tx('Galáxia já conquistada') : '', cor: 0x1e3a8a, borda: 0x60a5fa },
+    { id: 'infinito', nome: tx('INFINITO'), desc: tx('Sem fim: os inimigos ficam cada vez mais fortes até sua nave cair'),
+      info: rec ? tx('Recorde: {p} pontos ({tempo})', { p: fmt(rec.pontos), tempo: fmtTime(rec.tempo) }) : tx('Sem recorde ainda'), cor: 0x164e63, borda: 0x22d3ee },
+    { id: 'arena', nome: tx('ARENA'), desc: tx('Battle royale contra 9 naves: a zona fecha e só uma sobrevive'),
+      info: ar.partidas ? tx('Vitórias: {v} de {n}   Melhor: {m}º lugar', { v: ar.vitorias, n: ar.partidas, m: ar.melhor }) : tx('Nunca jogou'), cor: 0x7f1d1d, borda: 0xf87171 }
+  ];
+  modos.forEach((m, i) => {
+    const y = 160 + i * 112;
+    partes.push(makeButton(scene, W / 2, y, 620, 96, '', () => { fechar(); scene.scene.start('Game', { ship: naveIndex, modo: m.id }); },
+      { fixed: true, depth: D + 1, color: m.cor, stroke: m.borda }));
+    fixo(scene.add.text(W / 2 - 290, y - 30, m.nome, { fontFamily: 'Arial Black, Arial', fontSize: '22px', color: '#ffffff' }), 3);
+    fixo(scene.add.text(W / 2 - 290, y + 2, m.desc, { fontFamily: 'Arial', fontSize: '14px', color: '#e2e8f0', wordWrap: { width: 580 } }), 3);
+    if (m.info) fixo(scene.add.text(W / 2 + 290, y - 28, m.info, { fontFamily: 'Arial', fontSize: '13px', color: '#fde047', fontStyle: 'bold' }).setOrigin(1, 0), 3);
+  });
+  partes.push(makeButton(scene, W / 2, H - 34, 180, 36, tx('VOLTAR'), fechar, { fixed: true, depth: D + 2, size: 15 }));
+  return { partes, fechar };
+}

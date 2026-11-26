@@ -29,6 +29,8 @@ teste esconde o bug.
 - Texto que o jogador vê passa por tx('texto em português') e precisa de tradução
   nos 6 arquivos de src/idiomas/ (o teste idiomas.test.js aponta o que falta).
   Não use t() como nome: t já é variável local em vários lugares (tempo, tipo).
+- Modos: this.modo é 'campanha', 'infinito' ou 'arena' (init da partida). A arena
+  fica em src/arena.js; as naves rivais estão no grupo this.enemies com isRival.
 - O dono é leigo: explique em português simples o que
   mudou e como testar no navegador.
 
@@ -46,5 +48,7 @@ Meça antes e depois de mudar algo pesado: npm run desempenho -- 120
   "lixo" e engasgos.
 - Dentro de update(): nada de new Map/new Array/filter/map em
   listas grandes a cada quadro; reaproveite (ex.: gradeInimigos).
+- Não ligue antialiasGL (suavização de bordas do WebGL): derrubou o teste de 36 para
+  20 quadros/s. O texto legível no celular vem de antialias: true (esticar suave).
 - Guarde em variável o que é buscado toda hora (cache), em vez
   de percorrer todos os inimigos várias vezes no mesmo quadro.

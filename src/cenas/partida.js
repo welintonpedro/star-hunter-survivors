@@ -3,7 +3,8 @@
 // =====================================================
 class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
-  init(data) { this.shipIndex = (data && data.ship) || 0; }
+  // modo: 'campanha' (30 min), 'infinito' (até morrer) ou 'arena' (battle royale) — RN-68, RN-69
+  init(data) { this.shipIndex = (data && data.ship) || 0; this.modo = (data && data.modo) || 'campanha'; }
 
   create() {
     const ship = SHIPS[this.shipIndex];
@@ -33,6 +34,8 @@ class GameScene extends Phaser.Scene {
     this.weapons = []; this.passives = {}; this.sobrecargas = {};
     this.armasDaPartida = this.sortearArmasDaPartida();
     this.congeladoAte = 0; this.lentoAte = 0; this.chamasAte = 0; this.chamasT = 0; this.tintPoder = false;
+    this.subchefesMortos = 0; this.chefesMortos = 0; this.rivaisAbatidos = 0;
+    this.infProxChefe = 1800 + INFINITO.chefeACada; this.infProxSub = 1800 + INFINITO.subchefeACada; this.infChefeIdx = 0;
     this.orbs = []; this.orbAngle = 0; this.missiles = []; this.discs = [];
     this.minimapTimer = 0;
 
@@ -76,6 +79,8 @@ class GameScene extends Phaser.Scene {
     this.createHUD();
     if (MODO_TESTE) criarPainelTeste(this);
     this.banner(this.gal.name, '#' + this.gal.starTint.toString(16).padStart(6, '0'));
+    if (this.modo === 'arena') this.iniciarArena();                       // src/arena.js
+    if (this.modo === 'infinito') this.banner(tx('MODO INFINITO: até a nave cair'), '#a5f3fc');
   }
 
   // ---------- MUNDO: nebulosas, locais únicos, meteoros ----------
@@ -487,8 +492,11 @@ class GameScene extends Phaser.Scene {
   updateHUD() {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
     this.hpText.setText(Math.ceil(Math.max(0, this.hp)) + ' / ' + Math.ceil(this.mods.maxHp));
-    this.infoText.setText(tx('Nível {n}   Abates {a}   Créditos +{c}', { n: this.level, a: this.kills, c: fmt(this.runCredits) }));
-    this.timeText.setText(fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
+    let info = tx('Nível {n}   Abates {a}   Créditos +{c}', { n: this.level, a: this.kills, c: fmt(this.runCredits) });
+    if (this.modo === 'infinito') info += '   ' + tx('Pontos {p}', { p: fmt(this.pontosAtuais()) });
+    if (this.modo === 'arena') info += '   ' + tx('Naves vivas {n}', { n: this.colocacaoArena() });
+    this.infoText.setText(info);
+    this.timeText.setText(this.modo === 'infinito' ? fmtTime(this.elapsed) + '  ∞' : this.modo === 'arena' ? fmtTime(this.elapsed) + ' / ' + fmtTime(ARENA.duracao) : fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
     this.xpFill.setScale(Math.min(1, this.xp / this.xpNext), 1);
     if (this.boss && !this.boss.active) this.boss = this.chefeVivo();
     if (this.boss && this.boss.active) {
@@ -500,9 +508,18 @@ class GameScene extends Phaser.Scene {
 
   // Linha de aviso no rodapé: o que vem a seguir
   textoDica() {
+    if (this.modo === 'arena') {
+      if (Math.hypot(this.player.x - this.zona.x, this.player.y - this.zona.y) > this.zona.r) return tx('VOLTE PARA A ZONA SEGURA!');
+      return this.elapsed < ARENA.duracao ? tx('A zona fecha de vez em {tempo}', { tempo: fmtTime(ARENA.duracao - this.elapsed) }) : tx('A ZONA ESTÁ FECHANDO!');
+    }
+    if (this.modo === 'infinito' && this.elapsed >= 1800) return tx('{evento} em {tempo}', { evento: tx('Chefe'), tempo: fmtTime(Math.max(0, this.infProxChefe - this.elapsed)) });
     if (this.vitoriaRegistrada) return tx('GALÁXIA CONQUISTADA! Resista à nave-mãe o quanto puder.');
     const p = proximoEvento(this.elapsed);
     return p ? tx('{evento} em {tempo}', { evento: tx(p.nome), tempo: fmtTime(Math.max(0, p.t - this.elapsed)) }) : '';
+  }
+
+  pontosAtuais() {
+    return calcularPontos({ abates: this.kills, segundos: this.elapsed, subchefes: this.subchefesMortos, chefes: this.chefesMortos });
   }
 
   drawMinimap() {
@@ -526,6 +543,11 @@ class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     g.lineStyle(1, 0xffffff, 0.35);
     retangulosNoMinimapa(cam.scrollX * k, cam.scrollY * k, W * k, H * k, S).forEach((r) => g.strokeRect(X + r.x, Y + r.y, r.w, r.h));
+    if (this.modo === 'arena') {
+      // arena: rivais (na cor de cada um) e a zona segura
+      this.rivais.forEach((r) => { if (r.active && r.isRival) { g.fillStyle(r.corRival, 1); g.fillCircle(mx(r.x), my(r.y), 2.5); } });
+      g.lineStyle(1, 0xef4444, 0.9).strokeCircle(mx(this.zona.x), my(this.zona.y), Math.max(1, this.zona.r * k));
+    }
     g.fillStyle(0xffffff, 1).fillCircle(mx(this.player.x), my(this.player.y), 2.5);
   }
 
@@ -560,6 +582,7 @@ class GameScene extends Phaser.Scene {
     this.updatePickups();
     this.updatePOIs(dt);
     this.updateNaveMae(dt);
+    if (this.modo === 'arena') this.updateArena(dt);
     this.updateFaiscas(dt);
 
     this.bullets.children.iterate((b) => { if (b && b.active) { b.life -= dt; if (b.life <= 0) b.disableBody(true, true); } });
@@ -627,7 +650,7 @@ class GameScene extends Phaser.Scene {
   // ---------- NASCIMENTO DE INIMIGOS ----------
   updateSpawns(dt) {
     if (this.ritmoParado) return;
-    const t = this.elapsed;
+    const t = this.tempoInimigos();
     // inimigos comuns: ondas no começo, fluxo depois (tabela em src/dados/ondas.js)
     const n = passoNascimento(this.estadoOndas, t, dt, this.contarComuns(), ONDAS);
     if (n > 0) {
@@ -643,6 +666,7 @@ class GameScene extends Phaser.Scene {
         } else this.spawnEnemy(id);
       }
     }
+    if (this.modo === 'arena') return;   // na arena, os eventos são a zona, os rivais e os chefes (src/arena.js)
     if (quantosAte(t, EVENTOS.cercos) > this.ringCount) { this.ringCount++; this.spawnRing(); }
     if (quantosAte(t, EVENTOS.enxames) > this.swarmCount) { this.swarmCount++; this.spawnSwarm(); }
     // subchefes no horário
@@ -654,13 +678,26 @@ class GameScene extends Phaser.Scene {
     EVENTOS.chefes.forEach((c, i) => {
       if (!this.chefesFeitos[i] && t >= c.t) { this.chefesFeitos[i] = true; this.spawnBoss(i); }
     });
-    if (!this.naveMae && t >= EVENTOS.naveMae) this.chegarNaveMae();
+    if (this.modo === 'campanha' && !this.naveMae && t >= EVENTOS.naveMae) this.chegarNaveMae();
+    // infinito: depois dos 30:00, chefes a cada 5 min e subchefes a cada 2 min (RN-68)
+    if (this.modo === 'infinito') {
+      if (t >= this.infProxChefe) { this.infProxChefe += INFINITO.chefeACada; this.spawnBoss(this.infChefeIdx++ % EVENTOS.chefes.length); }
+      if (t >= this.infProxSub) { this.infProxSub += INFINITO.subchefeACada; const p = this.spawnPoint(); this.spawnElite(p.x, p.y); }
+    }
   }
+
+  // Modo infinito: depois de 29:00 a vida e o dano dos inimigos crescem 10% por minuto (RN-68)
+  fatorExtra() {
+    if (this.modo !== 'infinito' || this.elapsed <= INFINITO.inicioExtra) return 1;
+    return Math.pow(INFINITO.crescimentoPorMinuto, (this.elapsed - INFINITO.inicioExtra) / 60);
+  }
+  // Na arena os monstros "andam no tempo" mais rápido (8 min de arena = 16 min de campanha)
+  tempoInimigos() { return this.modo === 'arena' ? this.elapsed * ARENA.ritmoInimigos : this.elapsed; }
 
   // inimigos comuns vivos (sem contar subchefes e chefes)
   contarComuns() {
     let n = 0;
-    this.enemies.children.iterate((e) => { if (e && e.active && !e.isBoss && !e.isElite) n++; });
+    this.enemies.children.iterate((e) => { if (e && e.active && !e.isBoss && !e.isElite && !e.isRival) n++; });
     return n;
   }
   chefeVivo() {
@@ -699,12 +736,12 @@ class GameScene extends Phaser.Scene {
     e.enableBody(true, x, y, true, true);
     e.setDepth(5).clearTint();
     e.body.setCircle(t.radius, e.width / 2 - t.radius, e.height / 2 - t.radius);
-    const linhaMin = linhaDoMinuto(ONDAS, this.elapsed), vidaMinuto = linhaMin.vida;
+    const linhaMin = linhaDoMinuto(ONDAS, this.tempoInimigos()), extra = this.fatorExtra(), vidaMinuto = linhaMin.vida * extra;
     e.hp = e.maxHp = t.hp * this.gal.hpMult * vidaMinuto;
     e.speedV = t.speed * this.gal.speedMult * (0.9 + Math.random() * 0.2);
-    e.damage = t.damage * Math.sqrt(this.gal.hpMult) * linhaMin.dano;   // fica mais forte com o tempo
+    e.damage = t.damage * Math.sqrt(this.gal.hpMult) * linhaMin.dano * extra;   // fica mais forte com o tempo
     e.reward = t.reward; e.xpVal = t.xp; e.hitR = t.radius;
-    e.isBoss = false; e.isElite = false; e.straight = null;
+    e.isBoss = false; e.isElite = false; e.isRival = false; e.straight = null;
     e.flash = 0; e.orbHit = 0; e.kbT = 0; e.kbx = 0; e.kby = 0;
     e.flank = (Math.random() - 0.5) * 1.8;   // cada um chega por um ângulo diferente
     // comportamento próprio (src/comportamentos.js)
@@ -747,6 +784,7 @@ class GameScene extends Phaser.Scene {
     e.setScale(2.2);
     e.setTint(0xffd27f);
     e.hp = e.maxHp = e.maxHp * 28;
+    e.isRival = false;
     e.speedV *= 0.85;
     e.damage *= 2;
     e.reward = 40; e.xpVal = 10; e.hitR = INIMIGOS[tk].radius * 2.2;
@@ -772,7 +810,8 @@ class GameScene extends Phaser.Scene {
     e.enableBody(true, p.x, p.y, true, true);
     e.setDepth(6).clearTint();
     e.body.setCircle(50, e.width / 2 - 50, e.height / 2 - 50);
-    e.hp = e.maxHp = 1600 * this.gal.hpMult * c.vida;
+    e.hp = e.maxHp = 1600 * this.gal.hpMult * c.vida * this.fatorExtra() * (this.modo === 'arena' ? 0.6 : 1);
+    e.isRival = false;
     e.speedV = 60 * this.gal.speedMult;
     e.damage = 30 * Math.sqrt(this.gal.hpMult) * c.dano;
     e.danoTiro = c.dano;
@@ -837,13 +876,13 @@ class GameScene extends Phaser.Scene {
     const congelado = this.elapsed < this.congeladoAte, lento = !congelado && this.elapsed < this.lentoAte;
     // quando o poder acaba, tira a cor azul/roxa de todos uma única vez
     const tingir = congelado || lento;
-    if (this.tintPoder && !tingir) this.enemies.children.iterate((e) => { if (e && e.active) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); } });
+    if (this.tintPoder && !tingir) this.enemies.children.iterate((e) => { if (e && e.active) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); if (e.isRival) e.setTint(e.corRival); } });
     this.tintPoder = tingir;
     this.enemies.children.iterate((e) => {
       if (!e || !e.active) return;
       this.aproximarObj(e);
       // inimigo comum que ficou muito para trás volta para perto, na borda da tela (RN-59)
-      if (!e.isBoss && !e.isElite && (e.x - ppx) * (e.x - ppx) + (e.y - ppy) * (e.y - ppy) > LONGE2) {
+      if (!e.isBoss && !e.isElite && !e.isRival && (e.x - ppx) * (e.x - ppx) + (e.y - ppy) * (e.y - ppy) > LONGE2) {
         const p = this.spawnPoint();
         e.body.reset(p.x, p.y);
       }
@@ -855,7 +894,7 @@ class GameScene extends Phaser.Scene {
     });
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (e.flash > 0) { e.flash -= dt; if (e.flash <= 0) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); } }
+      if (e.flash > 0) { e.flash -= dt; if (e.flash <= 0) { e.clearTint(); if (e.isElite) e.setTint(0xffd27f); if (e.isRival) e.setTint(e.corRival); } }
       if (e.straight) {
         e.life -= dt;
         if (e.life <= 0) { e.disableBody(true, true); continue; }
@@ -867,12 +906,12 @@ class GameScene extends Phaser.Scene {
       if (congelado) { e.setVelocity(0, 0); e.setTint(0x93c5fd); continue; }        // poder "tempo parado"
       if (lento) e.setTint(0xc4b5fd);
       const dx = px - e.x, dy = py - e.y, d = Math.hypot(dx, dy) || 1;
-      if (!e.isBoss && !e.isElite && d > 1400) {
+      if (!e.isBoss && !e.isElite && !e.isRival && d > 1400) {
         const p = this.spawnPoint(); e.setPosition(p.x, p.y); continue;   // reposiciona em vez de sumir
       }
       // comportamento próprio do inimigo (src/comportamentos.js); null = perseguir
-      const comportamento = !e.isBoss && COMPORTAMENTOS[e.comp];
-      const quer = comportamento ? comportamento(this, e, dt, { dx, dy, d }) : null;
+      const comportamento = !e.isBoss && !e.isRival && COMPORTAMENTOS[e.comp];
+      const quer = e.isRival ? this.movimentoRival(e, dt) : comportamento ? comportamento(this, e, dt, { dx, dy, d }) : null;
       if (!e.active) continue;              // pode ter explodido
       if (e.parado) { e.setVelocity(0, 0); continue; }
       let vx, vy;
@@ -1033,6 +1072,8 @@ class GameScene extends Phaser.Scene {
 
   killEnemy(e) {
     if (!e.active) return;
+    if (e.isRival) { this.eliminarRival(e, true); return; }   // nave rival abatida pelo jogador (src/arena.js)
+    if (e.semRecompensaRival) { e.semRecompensaRival = false; this.boom(e.x, e.y, 6, hexToInt(this.gal.alien.b)); e.disableBody(true, true); return; }
     tocarSom(this, 'explosao');
     const mult = this.gal.rewardMult * this.creditMult;
     if (!e.semRecompensa) {
@@ -1040,8 +1081,8 @@ class GameScene extends Phaser.Scene {
       if (e.isElite || e.isBoss) this.runCredits += e.reward * mult;   // inimigo comum não dá créditos (RN-56)
       this.kills++;
       SAVE.stats.abates++;
-      if (e.isElite) SAVE.stats.subchefes++;
-      if (e.isBoss) SAVE.stats.chefes++;
+      if (e.isElite) { SAVE.stats.subchefes++; this.subchefesMortos++; }
+      if (e.isBoss) { SAVE.stats.chefes++; this.chefesMortos++; }
       this.dropGem(e.x, e.y, e.xpVal);
       if (AO_MORRER[e.comp]) AO_MORRER[e.comp](this, e);
     }
@@ -1595,8 +1636,10 @@ class GameScene extends Phaser.Scene {
   contarArmaAchada(id) {
     if (!WEAPONS[id].hidden || armaLiberada(SAVE, id)) return;
     const n = registrarArmaAchada(SAVE, id);
-    if (armaLiberada(SAVE, id)) this.banner(tx('{arma} agora aparece nas cartas!', { arma: WEAPONS[id].name }), '#86efac');
-    else this.floatText(this.player.x, this.player.y - 20, tx('{arma} achada {n}/{total}', { arma: WEAPONS[id].name, n, total: ACHADOS_PARA_LIBERAR }), '#f0abfc');
+    if (armaLiberada(SAVE, id)) {
+      if (this.armasDaPartida && !this.armasDaPartida.includes(id)) this.armasDaPartida.push(id);   // liberada agora: já vale nesta partida
+      this.banner(tx('{arma} agora aparece nas cartas!', { arma: WEAPONS[id].name }), '#86efac');
+    } else this.floatText(this.player.x, this.player.y - 20, tx('{arma} achada {n}/{total}', { arma: WEAPONS[id].name, n, total: ACHADOS_PARA_LIBERAR }), '#f0abfc');
     writeSave(SAVE);
   }
 
@@ -1958,7 +2001,7 @@ class GameScene extends Phaser.Scene {
     if (this.hp <= 0) {
       this.boom(this.player.x, this.player.y, 30, 0xf97316);
       this.player.setVisible(false);
-      this.endRun(this.vitoriaRegistrada ? 'victory' : 'dead', this.primeiraVitoria);
+      this.endRun(this.modo === 'arena' ? 'arena' : this.vitoriaRegistrada ? 'victory' : 'dead', this.primeiraVitoria);
     }
   }
 
@@ -1980,13 +2023,34 @@ class GameScene extends Phaser.Scene {
     this.ended = true;
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }
+    // resultado de cada modo (recordes no aparelho: SAVE.recordes)
+    let extraModo = '', titulo = null, corTitulo = null;
+    if (this.modo === 'arena') {
+      const lugar = this.colocacaoArena(), premio = (ARENA.premio[lugar - 1] || 0) * this.gal.rewardMult;
+      this.runCredits += premio;
+      const r = SAVE.recordes.arena;
+      r.partidas++;
+      if (lugar === 1) r.vitorias++;
+      const melhorou = !r.melhor || lugar < r.melhor;
+      if (melhorou) r.melhor = lugar;
+      titulo = lugar === 1 ? tx('VITÓRIA! 1º LUGAR') : tx('{n}º LUGAR', { n: lugar });
+      corTitulo = lugar === 1 ? '#fde047' : lugar <= 3 ? '#86efac' : '#e2e8f0';
+      extraModo = tx('Prêmio da colocação: {v} créditos', { v: fmt(premio) }) + '   ' + tx('Naves abatidas: {n}', { n: this.rivaisAbatidos }) +
+        (melhorou && lugar > 1 ? '\n' + tx('Sua melhor colocação até agora!') : '');
+    } else if (this.modo === 'infinito') {
+      const pontos = this.pontosAtuais(), id = this.ship.id, ant = SAVE.recordes.infinito[id];
+      const novo = !ant || pontos > ant.pontos;
+      if (novo) SAVE.recordes.infinito[id] = { pontos, tempo: this.elapsed, abates: this.kills };
+      extraModo = tx('Pontos: {p}', { p: fmt(pontos) }) + '   ' + (novo ? tx('NOVO RECORDE!') : tx('Recorde: {p}', { p: fmt(ant.pontos) }));
+    }
     this.bankCredits();
     SAVE.stats.tempoTotal += this.elapsed;
     this.atualizarProgresso();
     writeSave(SAVE);
 
-    const titles = { victory: tx('GALÁXIA CONQUISTADA!'), dead: tx('NAVE DESTRUÍDA'), retreat: tx('MISSÃO ENCERRADA') };
-    const colors = { victory: '#86efac', dead: '#f87171', retreat: '#a5f3fc' };
+    const titles = { victory: tx('GALÁXIA CONQUISTADA!'), dead: tx('NAVE DESTRUÍDA'), retreat: tx('MISSÃO ENCERRADA'), arena: titulo };
+    const colors = { victory: '#86efac', dead: '#f87171', retreat: '#a5f3fc', arena: corTitulo };
+    if (this.modo === 'arena' && reason === 'retreat') { titles.retreat = titulo; colors.retreat = corTitulo; }
     const D = 300;
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setInteractive();
     this.add.rectangle(W / 2, H / 2, 480, 320, 0x0f172a).setStrokeStyle(3, 0x60a5fa).setScrollFactor(0).setDepth(D + 1);
@@ -1998,6 +2062,7 @@ class GameScene extends Phaser.Scene {
     let body = tx('Tempo: {tempo}   Abates: {a}   Nível: {n}', { tempo: fmtTime(this.elapsed), a: this.kills, n: this.level }) +
       '\n' + tx('Locais descobertos: {n}/{total}', { n: found, total: this.pois.length }) +
       (evolved.length ? '\n' + tx('Combos: {lista}', { lista: evolved.join(', ') }) : '') +
+      (extraModo ? '\n' + extraModo : '') +
       '\n\n' + tx('Créditos ganhos: {v}', { v: fmt(this.runCredits) });
     if (reason === 'victory' && firstClear && SHIPS[this.gi + 1]) body += '\n\n' + tx('Nova nave disponível no hangar: {nave}!', { nave: SHIPS[this.gi + 1].name });
     this.add.text(W / 2, H / 2 - 5, body, { fontFamily: 'Arial', fontSize: '16px', color: '#e2e8f0', align: 'center' }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 2);

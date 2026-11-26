@@ -62,7 +62,7 @@ class HangarScene extends Phaser.Scene {
       this.keep(this.add.text(x, y + 64, s.desc, { fontFamily: 'Arial', fontSize: '11px', color: '#94a3b8' }).setOrigin(0.5));
       let btn;
       if (owned) {
-        btn = makeButton(this, x, y + 96, 170, 34, tx('JOGAR'), () => this.scene.start('Game', { ship: i }), { color: 0x166534, stroke: 0x4ade80, size: 16 });
+        btn = makeButton(this, x, y + 96, 170, 34, tx('JOGAR'), () => abrirEscolhaDeModo(this, i), { color: 0x166534, stroke: 0x4ade80, size: 16 });
       } else if (!prevCleared) {
         btn = makeButton(this, x, y + 96, 190, 34, tx('Sobreviva 30 min em') + '\n' + GALAXIES[s.galaxy - 1].name, () => {}, { disabled: true, size: 11 });
       } else {
