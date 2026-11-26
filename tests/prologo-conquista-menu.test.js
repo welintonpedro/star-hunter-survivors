@@ -89,3 +89,37 @@ test('RN-77: quem pula a história não ganha a conquista', async () => {
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('modo teste: botão PRÓLOGO no hangar e botões para pular etapas dentro do prólogo', async () => {
+  const j = await abrirJogo({ busca: 'teste=1' });
+  try {
+    await esperarCena(j.pagina, 'Hangar');
+    await G(j.pagina, () => {
+      const h = game.scene.getScene('Hangar');
+      if (h.children.list.some((o) => o.type === 'Text' && o.text === 'JOGAR')) {   // fecha o menu inicial
+        const t = h.children.list.filter((o) => o.type === 'Text' && o.text === 'JOGAR').pop();
+        h.children.list.filter((o) => o.type === 'Rectangle' && o.input && o.x === t.x && o.y === t.y).pop().emit('pointerdown');
+      }
+      const t = h.children.list.filter((o) => o.type === 'Text' && o.text === 'PRÓLOGO (teste)').pop();
+      h.children.list.filter((o) => o.type === 'Rectangle' && o.input && o.x === t.x && o.y === t.y).pop().emit('pointerdown');
+    });
+    await esperarCena(j.pagina, 'Game');
+    const r = await G(j.pagina, () => {
+      const g = game.scene.getScene('Game');
+      const clicar = (rot) => { const t = g.children.list.filter((o) => o.type === 'Text' && o.text === rot).pop(); g.children.list.filter((o) => o.type === 'Rectangle' && o.input && o.x === t.x && o.y === t.y).pop().emit('pointerdown'); };
+      const antes = g.passoAtual().id;
+      clicar('próx. etapa');
+      const depois = g.passoAtual().id;
+      clicar('ir p/ chefe');
+      const chefe = g.passoAtual().id;
+      clicar('ir p/ nave-mãe');
+      return { modo: g.modo, antes, depois, chefe, mae: g.passoAtual().id };
+    });
+    assert.equal(r.modo, 'prologo');
+    assert.notEqual(r.antes, r.depois);
+    assert.equal(r.chefe, 'chefe');
+    assert.equal(r.mae, 'naveMae');
+    await esperar(2500);
+    assert.deepEqual(j.erros, []);
+  } finally { await j.fechar(); }
+});

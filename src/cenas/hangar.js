@@ -40,6 +40,8 @@ class HangarScene extends Phaser.Scene {
     this.keep(makeButton(this, 92, 30, 150, 30, tx('CÓDEX'), () => abrirCodex(this), { size: 14, color: 0x312e81, stroke: 0x818cf8 }));
     this.keep(makeButton(this, W - 92, 30, 150, 30, tx('MENU'), () => abrirMenuPrincipal(this), { size: 14 }));
     this.keep(makeButton(this, W - 92, 68, 150, 30, tx('CONFIGURAÇÕES'), () => abrirConfiguracoes(this), { size: 13 }));
+    // modo de teste (?teste=1): botão para abrir o prólogo a qualquer hora
+    if (MODO_TESTE) this.keep(makeButton(this, 92, H - 28, 150, 30, 'PRÓLOGO (teste)', () => this.scene.start('Game', { modo: 'prologo' }), { size: 12, color: 0x450a0a, stroke: 0xf87171 }));
     this.keep(makeButton(this, 92, 68, 150, 30, tx('CONQUISTAS') + ' ' + nCq + '/' + CONQUISTAS.length, () => abrirConquistas(this), { size: 13, color: 0x14532d, stroke: 0x4ade80 }));
 
     SHIPS.forEach((s, i) => {

@@ -38,6 +38,7 @@ function criarPainelTeste(scene) {
     fontFamily: 'Arial', fontSize: '12px', color: '#f87171', fontStyle: 'bold', stroke: '#000000', strokeThickness: 3
   }).setOrigin(0.5).setScrollFactor(0).setDepth(D);
   const opts = { fixed: true, depth: D, color: 0x450a0a, stroke: 0xf87171, size: 12 };
+  if (scene.modo === 'prologo') { criarPainelTestePrologo(scene, x, y0, opts); return; }
   makeButton(scene, x, y0 + 26, 110, 24, '+1 min', () => scene.testeIrPara(scene.elapsed + 60), opts);
   makeButton(scene, x, y0 + 56, 110, 24, '+5 min', () => scene.testeIrPara(scene.elapsed + 300), opts);
   makeButton(scene, x, y0 + 86, 110, 24, 'ir p/ 9:55', () => scene.testeIrPara(9 * 60 + 55), opts);
@@ -46,6 +47,22 @@ function criarPainelTeste(scene) {
     const p = proximoEvento(scene.elapsed + 5);
     if (p) scene.testeIrPara(p.t - 5);
   }, opts);
+}
+
+// No prólogo: pular etapas do roteiro (a etapa atual aparece embaixo dos botões)
+function criarPainelTestePrologo(scene, x, y0, opts) {
+  const pular = () => { if (scene.pr && !scene.pr.acabando && !scene.ended) { if (scene.modal) scene.closeModal(); scene.proximoPassoPrologo(); } };
+  const irPara = (id) => {
+    const alvo = ROTEIRO_PROLOGO.findIndex((p) => p.id === id);
+    let voltas = 0;
+    while (scene.pr && scene.pr.i < alvo && voltas++ < 30) pular();
+  };
+  makeButton(scene, x, y0 + 26, 110, 24, 'próx. etapa', pular, opts);
+  makeButton(scene, x, y0 + 56, 110, 24, 'ir p/ chefe', () => irPara('chefe'), opts);
+  makeButton(scene, x, y0 + 86, 110, 24, 'ir p/ nave-mãe', () => irPara('naveMae'), opts);
+  const etapa = scene.add.text(x, y0 + 112, '', { fontFamily: 'Arial', fontSize: '11px', color: '#fca5a5', stroke: '#000000', strokeThickness: 3 })
+    .setOrigin(0.5).setScrollFactor(0).setDepth(opts.depth);
+  scene.time.addEvent({ delay: 300, loop: true, callback: () => { const p = scene.passoAtual && scene.passoAtual(); etapa.setText(p ? 'etapa: ' + p.id : ''); } });
 }
 
 if (typeof module !== 'undefined') {
