@@ -98,10 +98,11 @@ Object.assign(GameScene.prototype, {
       this.falaPrologo(tx('Pegue as joias brilhantes para subir de nível!'));
       pr.ondaT = 0;   // a próxima leva de monstros já vem (a tela não esvazia durante a aula)
       this.xp = Math.max(this.xp, this.xpNext - 2);
+      pr.forcarCarta = true;   // a próxima subida de nível mostra as 3 cartas (aula), mesmo que já tenha visto uma antes
     } else if (id === 'cartas') {
       this.falaPrologo(tx('Escolha uma carta!\nNa dúvida, pegue a RECOMENDADA.'));
       pr.cartaExplicada = true;
-      if (!this.modal) this.gainXp(this.xpNext);   // não pegou joia a tempo: sobe de nível assim mesmo
+      if (!this.modal) { pr.forcarCarta = true; this.gainXp(this.xpNext); }   // não pegou joia a tempo: sobe de nível assim mesmo
       this.maoNaRecomendada();
     } else if (id === 'horda') {
       this.falaPrologo(tx('Cada nível te deixa mais forte.\nDestrua todos!'));
@@ -129,7 +130,7 @@ Object.assign(GameScene.prototype, {
     } else if (id === 'subchefe') {
       this.falaPrologo(tx('Um SUBCHEFE! Derrote ele!'), '#fca5a5');
       pr.subIni = this.subchefesMortos;
-      const p = this.spawnPoint(); this.spawnElite(p.x, p.y);
+      this.subchefePrologo();
     } else if (id === 'chefe') {
       this.falaPrologo(tx('O CHEFE DA GALÁXIA!\nVocê consegue!'), '#fca5a5');
       pr.chefeIni = this.chefesMortos;
@@ -176,7 +177,12 @@ Object.assign(GameScene.prototype, {
       if (!gema || Math.hypot(gema.x - this.player.x, gema.y - this.player.y) > 320) {
         if (!pr.joiaPerto) { pr.joiaPerto = true; this.dropGem(this.player.x + 140, this.player.y, 3); }
       }
-    } else if (id === 'cartas') pronto = !!pr.eventos.fechou;
+    } else if (id === 'cartas') {
+      pronto = !!pr.eventos.fechou;
+      // garantia: se por algum motivo as cartas não abriram, abre de novo (o prólogo nunca pode travar)
+      if (!pronto && !this.modal && pr.t > 1.5 && !pr.cartaDeNovo) { pr.cartaDeNovo = true; pr.forcarCarta = true; this.gainXp(this.xpNext); }
+      if (!pronto && !this.modal && pr.t > 3) pronto = true;
+    }
     else if (id === 'horda') {
       this.manterOnda(dt, 2, 14, 110);
       this.surpresaPrologo(pr, 6, 'enxame1', () => { this.spawnSwarm(); this.banner(tx('ENXAME!'), '#fde047'); });
@@ -187,12 +193,12 @@ Object.assign(GameScene.prototype, {
       pronto = !!pr.eventos.bau;
       let bau = null; this.pickups.children.iterate((p) => { if (p && p.active && p.ptype === 'chest') bau = p; });
       this.apontarSeta(bau);
-      this.manterOnda(dt, 3, 8, 50);
+      this.manterOnda(dt, 2, 12, 70);
     } else if (id === 'meteoro') {
       pronto = this.chamasAte > this.elapsed;
       let item = null; this.pickups.children.iterate((p) => { if (p && p.active && p.ptype === 'chamas') item = p; });
       this.apontarSeta(item || (pr.meteoro && pr.meteoro.active ? pr.meteoro : null));
-      this.manterOnda(dt, 3, 8, 50);
+      this.manterOnda(dt, 2, 12, 70);
     } else if (id === 'chamas') this.manterOnda(dt, 1.2, 14, 140);
     else if (id === 'pausa') this.manterOnda(dt, 2, 8, 80);
     else if (id === 'cerco') { this.manterOnda(dt, 1.6, 14, 140); if (pr.t > 12 && pr.t < 13) this.spawnRing(); }
@@ -217,6 +223,7 @@ Object.assign(GameScene.prototype, {
     const pr = this.pr;
     if (!pr || pr.acabando) return;
     pr.eventos[nome] = true;
+    if (nome === 'fechou') pr.forcarCarta = false;   // a aula das cartas acabou: volta a escolher sozinho
     const id = this.passoAtual() && this.passoAtual().id;
     // a primeira carta da história: explica as cartas (no passo das joias, ou antes, se subiu de nível cedo)
     if (nome === 'carta' && id === 'joias') { pr.cartaExplicada = true; this.proximoPassoPrologo(); }
@@ -241,7 +248,7 @@ Object.assign(GameScene.prototype, {
   // aviso rápido, sem parar a ação (o menu de cartas só volta para mostrar a arma suprema).
   nivelAutomaticoPrologo() {
     const pr = this.pr;
-    if (!pr || !pr.cartaExplicada || this.forcarSuprema) return false;
+    if (!pr || !pr.cartaExplicada || this.forcarSuprema || pr.forcarCarta) return false;
     let options = this.pickWeighted(this.upgradeOptions(), 3);
     if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
     if (!options.length) return true;
@@ -291,10 +298,15 @@ Object.assign(GameScene.prototype, {
   surpresaPrologo(pr, segundos, chave, fn) {
     if (pr.t >= segundos && !pr.eventos[chave]) { pr.eventos[chave] = true; fn(); }
   },
+  // vida dos monstros do prólogo: cresce junto com o nível da Eclipse, senão morrem fora da tela
+  vidaPrologo() {
+    return PROLOGO_INICIO.vidaInimigos * (1 + PROLOGO_INICIO.vidaPorNivel * Math.max(0, this.level - PROLOGO_INICIO.nivel));
+  },
   subchefePrologo() {
     const p = this.spawnPoint();
     this.spawnElite(p.x, p.y);
-    this.enemies.children.iterate((e) => { if (e && e.active && e.isElite && !e.__prologo) { e.__prologo = true; e.hp *= 0.5; e.maxHp *= 0.5; } });   // cai rápido
+    // a vida do monstro comum já acompanha a força da Eclipse (vidaPrologo); o subchefe ganha um extra para durar na tela
+    this.enemies.children.iterate((e) => { if (e && e.active && e.isElite && !e.__prologo) { e.__prologo = true; e.hp *= PROLOGO_INICIO.vidaSubchefe; e.maxHp *= PROLOGO_INICIO.vidaSubchefe; } });
   },
 
   // monstros do roteiro: n de uma vez, em volta da tela

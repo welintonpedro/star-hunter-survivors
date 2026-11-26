@@ -110,3 +110,28 @@ test('RN-81: lança-chamas solta chamas macias que mudam de cor (amarelo → lar
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('prólogo: na aula das cartas as 3 cartas sempre aparecem, mesmo se já viu uma carta antes (não trava)', async () => {
+  const j = await abrirJogo({ prologo: true });
+  try {
+    await esperarCena(j.pagina, 'Game');
+    const r = await G(j.pagina, () => {
+      const g = game.scene.getScene('Game');
+      g.pr.cartaExplicada = true;   // como quem subiu de nível cedo e já viu a explicação
+      // etapa das joias: a próxima subida mostra as cartas
+      g.pr.i = ROTEIRO_PROLOGO.findIndex((p) => p.id === 'joias') - 1; g.proximoPassoPrologo();
+      g.gainXp(g.xpNext + 1);
+      const naJoia = { modal: !!g.modal, n: g.modal ? g.modal.options.length : 0, etapa: g.passoAtual().id };
+      g.closeModal();
+      // pulando direto para a etapa das cartas (joia não pega a tempo)
+      g.pr.i = ROTEIRO_PROLOGO.findIndex((p) => p.id === 'cartas') - 1; g.proximoPassoPrologo();
+      const naCarta = { modal: !!g.modal, n: g.modal ? g.modal.options.length : 0 };
+      g.modalPick(0);
+      if (g.modal) g.closeModal();
+      g.gainXp(g.xpNext + 1);   // depois da aula volta a escolher sozinho
+      return { naJoia, naCarta, depois: !!g.modal };
+    });
+    assert.deepEqual(r, { naJoia: { modal: true, n: 3, etapa: 'cartas' }, naCarta: { modal: true, n: 3 }, depois: false });
+    assert.deepEqual(j.erros, []);
+  } finally { await j.fechar(); }
+});
