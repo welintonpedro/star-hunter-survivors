@@ -131,6 +131,7 @@ class BootScene extends Phaser.Scene {
     writeSave(SAVE);
     // pixel art nítida: todas as texturas geradas usam filtro "nearest" (textos usam o suave)
     this.textures.getTextureKeys().forEach((k) => this.textures.get(k).setFilter(Phaser.Textures.FilterMode.NEAREST));
+    pokiCarregou();   // avisa o Poki que o carregamento terminou (sem Poki, não faz nada)
     // quem nunca jogou começa pelo prólogo (RN-73); os outros vão direto ao menu
     if (!PREFS.prologoVisto && STORAGE) this.scene.start('Game', { modo: 'prologo' });   // sem como salvar, não repete o prólogo toda vez
     else this.scene.start('Hangar');

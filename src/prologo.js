@@ -40,15 +40,13 @@ Object.assign(GameScene.prototype, {
       alvo: null
     };
     // botão TELA CHEIA no alto, no lugar do "recolher nave" (sem cobrir o mapa); no iPhone não existe
-    if (this.scale.fullscreen.available) {
+    if (this.scale.fullscreen.available && !NA_POKI) {   // no Poki, a tela cheia é do próprio site
       this.btnTelaCheia = makeButton(this, W - 140, 26, 160, 30, tx('TELA CHEIA'), () => {
         if (this.scale.isFullscreen) this.scale.stopFullscreen(); else this.scale.startFullscreen();
       }, { fixed: true, depth: 151, size: 13, color: 0x166534, stroke: 0x4ade80 });
     }
-    // pular a história (pequeno, no canto; aparece depois de um tempo)
-    this.time.delayedCall(20000, () => {
-      if (this.pr && !this.pr.acabando) this.pr.pular = makeButton(this, W - 70, H - 22, 120, 26, tx('PULAR HISTÓRIA'), () => this.terminarPrologo(), { fixed: true, depth: 151, size: 11, color: 0x1f2937, stroke: 0x64748b });
-    });
+    // pular a história: no canto, desde o início (regra do Poki: toda introdução pode ser pulada)
+    this.pr.pular = makeButton(this, W - 76, H - 24, 132, 30, tx('PULAR HISTÓRIA'), () => this.terminarPrologo(), { fixed: true, depth: 151, size: 12, color: 0x334155, stroke: 0xe2e8f0 });
     this.proximoPassoPrologo();
   },
 
@@ -360,6 +358,7 @@ Object.assign(GameScene.prototype, {
     if (pr.tirosMae) pr.tirosMae.remove(false);
     pr.fala.setText('');
     this.ended = true;                      // o jogo para; daqui em diante é só a cena
+    pokiParado();                           // cena final não é jogo (regra do Poki)
     this.physics.pause();
     this.esconderTeclas();
     const m = this.naveMaePrologo, px = this.player.x, py = this.player.y;

@@ -362,7 +362,15 @@ class GameScene extends Phaser.Scene {
     // trocar de aba ou minimizar abre a pausa (RN-31, RN-33)
     const aoEsconder = () => this.abrirPausa();
     this.game.events.on('hidden', aoEsconder);
-    this.events.once('shutdown', () => this.game.events.off('hidden', aoEsconder));
+    this.events.once('shutdown', () => { this.game.events.off('hidden', aoEsconder); pokiParado(); });
+    // Poki: a partida "começa" no primeiro toque ou tecla do jogador, não ao abrir a cena
+    const primeiroToque = () => {
+      this.input.off('pointerdown', primeiroToque);
+      this.input.keyboard.off('keydown', primeiroToque);
+      if (!this.menuPausa && !this.ended) pokiJogando();
+    };
+    this.input.on('pointerdown', primeiroToque);
+    this.input.keyboard.on('keydown', primeiroToque);
 
     this.joy = { active: false, dx: 0, dy: 0, sx: 0, sy: 0 };
     this.joyBase = this.add.circle(0, 0, 50, 0xffffff, 0.08).setStrokeStyle(2, 0xffffff, 0.3).setScrollFactor(0).setDepth(140).setVisible(false);
@@ -403,6 +411,7 @@ class GameScene extends Phaser.Scene {
   }
   abrirPausa() {
     if (this.ended || this.menuPausa) return;
+    pokiParado();
     this.physics.pause();
     this.time.paused = true;
     this.tweens.pauseAll();
@@ -433,13 +442,20 @@ class GameScene extends Phaser.Scene {
     if (this.modo !== 'prologo') botao(H / 2 + 46, tx('RECOLHER NAVE'), () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
     this.menuPausa = { parts };
   }
-  fecharPausa() {
+  // semIntervalo: fechar sem voltar a jogar (ex.: recolher a nave), então sem anúncio
+  fecharPausa(semIntervalo) {
     if (!this.menuPausa) return;
     this.menuPausa.parts.forEach((p) => p.destroy());
     this.menuPausa = null;
-    this.time.paused = false;
-    this.tweens.resumeAll();
-    if (!this.modal && !this.ended) this.physics.resume();
+    if (semIntervalo) return;
+    // no Poki, a volta da pausa é um intervalo onde pode passar um anúncio; sem Poki, volta na hora
+    pokiIntervalo(() => {
+      if (this.menuPausa || this.ended || !this.sys.isActive()) return;   // pausou de novo ou saiu durante o anúncio
+      this.time.paused = false;
+      this.tweens.resumeAll();
+      if (!this.modal) this.physics.resume();
+      pokiJogando();
+    });
   }
 
   // ---------- HUD ----------
@@ -2235,8 +2251,9 @@ class GameScene extends Phaser.Scene {
 
   endRun(reason, firstClear) {
     if (this.ended) return;
-    if (this.menuPausa) this.fecharPausa();
+    if (this.menuPausa) this.fecharPausa(true);
     this.ended = true;
+    pokiParado();
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }
     // resultado de cada modo (recordes no aparelho: SAVE.recordes)

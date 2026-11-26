@@ -21,7 +21,8 @@ function contadoresNoTempo(t, ritmos) {
   return { ringCount: conta(ritmos.ring), swarmCount: conta(ritmos.swarm), eliteCount: conta(ritmos.elite) };
 }
 
-const MODO_TESTE = typeof location !== 'undefined' && modoTesteAtivo(location.search);
+// na versão do Poki o modo de teste nunca liga (regra do Poki: nada de ferramenta de teste no jogo publicado)
+const MODO_TESTE = typeof location !== 'undefined' && !(typeof NA_POKI !== 'undefined' && NA_POKI) && modoTesteAtivo(location.search);
 
 // Monta o painel de teste na cena da partida (só chamado quando MODO_TESTE é verdadeiro)
 function criarPainelTeste(scene) {
