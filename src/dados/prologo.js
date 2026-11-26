@@ -39,7 +39,7 @@ const PROLOGO_INICIO = {
   xpPorNivel: 100,       // XP fixa por nível no prólogo (depois da lição, as cartas se escolhem sozinhas)
   vidaInimigos: 1.5,     // vida dos monstros do prólogo (a Eclipse é muito forte: com pouca vida eles morriam antes de aparecer)
   vidaPorNivel: 0.2,     // +20% de vida nos monstros a cada nível que a Eclipse sobe (acompanha a força dela)
-  vidaSubchefe: 1.6,     // subchefes duram bastante na tela para dar gosto de derrotar
+  vidaSubchefe: 1.0,     // subchefe do prólogo sem vida extra: cai em uns 15 s (só vale no prólogo)
   danoRecebido: 0.25,    // a nave recebe só 25% do dano (até a nave-mãe chegar)
   vidaChefe: 0.35        // chefe do prólogo cai rápido
 };
