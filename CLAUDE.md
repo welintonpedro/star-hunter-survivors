@@ -8,6 +8,9 @@ Testes: npm install (uma vez) e npm test. Os de navegador usam o Chrome
 Arquivos em src/ são scripts comuns carregados em ordem pelo index.html;
   um arquivo novo precisa de uma linha lá, na posição certa.
 Modo de teste: abra o jogo com ?teste=1 para pular o relógio.
+Antes de publicar: npm run versao (carimba ?v= nos scripts do index.html; sem isso o
+  navegador de quem já jogou pode ficar com .js antigo em cache). Linha nova de script
+  no index.html: use src="src/arquivo.js" e rode o comando, ele põe o carimbo.
 Specs ficam em docs/spec/, numerados.
 Os testes definem o que é "pronto": se um teste parecer
 errado, pergunte antes de alterá-lo, porque mudar o
