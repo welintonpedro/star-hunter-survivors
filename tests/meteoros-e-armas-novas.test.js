@@ -126,7 +126,7 @@ test('RN-64: cada partida sorteia 5 armas comuns; as cartas nunca oferecem arma 
       for (let k = 0; k < 40; k++) {
         g.armasDaPartida = g.sortearArmasDaPartida();
         sorteios.add(g.armasDaPartida.slice().sort().join(','));
-        g.upgradeOptions().forEach((o) => { if (o.kind === 'weapon' && o.level === 1 && !g.armasDaPartida.includes(o.id)) fora.push(o.id); });
+        g.upgradeOptions().forEach((o) => { if (o.kind === 'weapon' && o.level === 1 && !WEAPONS[o.id].suprema && !g.armasDaPartida.includes(o.id)) fora.push(o.id); });   // supremas saem em qualquer partida (RN-66, ok do dono em 25/11)
       }
       return { tamanho: g.armasDaPartida.length, poder: g.armasDaPartida.some((id) => WEAPONS[id].poder), variados: sorteios.size, fora };
     });
