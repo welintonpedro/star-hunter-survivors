@@ -28,7 +28,10 @@ class GameScene extends Phaser.Scene {
     this.xpMult = 1 + this.bonusCq.xp; this.creditMult = 1 + this.bonusCq.creditos;
     this.ultimoDanoTempo = 0; this.progressoTimer = 1; this.bausSubchefe = 0; this.chanceArmaTravada = CHANCE_ARMA_TRAVADA;
     this.filaAvisos = []; this.avisoAtivo = false;
-    this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 260 });   // estoque de faíscas
+    this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 260 });
+    // chamas do lança-chamas: estoque próprio, com brilho somado (ADD) para parecer fogo de verdade
+    this.chamasFx = this.add.group({ defaultKey: 'fogo', maxSize: 150, createCallback: (o) => o.setBlendMode(Phaser.BlendModes.ADD) });
+    this.chamasVivas = 0; this.chamasEmite = 0;   // estoque de faíscas
     this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
     this.cullTimer = 0;
     this.weapons = []; this.passives = {}; this.sobrecargas = {};
@@ -598,6 +601,7 @@ class GameScene extends Phaser.Scene {
     this.updateNaveMae(dt);
     if (this.modo === 'arena') this.updateArena(dt);
     this.updateFaiscas(dt);
+    if (this.chamasVivas > 0 || this.elapsed < this.chamasAte) this.updateFogo(dt);
 
     this.bullets.children.iterate((b) => {
       if (!b || !b.active) return;
@@ -1337,14 +1341,44 @@ class GameScene extends Phaser.Scene {
       if (d2 > R2) return;
       if (Math.abs(Phaser.Math.Angle.Wrap(Math.atan2(dy, dx) - a)) < ABERTURA) this.damageTarget(t, dano);
     });
-    // fogo: faíscas do estoque saindo em cone
-    for (let i = 0; i < (this.efeitosReduzidos ? 2 : 5); i++) {
-      const f = this.faiscas.get(px, py);
-      if (!f) break;
-      const aa = a + (Math.random() - 0.5) * ABERTURA * 2, vel = R * (2.2 + Math.random());
-      f.setActive(true).setVisible(true).setPosition(px, py).setTint(Math.random() < 0.5 ? 0xf97316 : 0xfde047).setAlpha(1).setScale(1.6).setDepth(9);
-      f.vx = Math.cos(aa) * vel; f.vy = Math.sin(aa) * vel; f.vida = 0.35; f.vidaMax = 0.35;
+    this.chamasAng = a;   // o fogo desenhado (updateFogo) sai nessa direção
+  }
+  // Fogo do lança-chamas: bolas macias que nascem pequenas e brancas no bico da nave,
+  // crescem, perdem velocidade e mudam de amarelo para laranja, vermelho e fumaça (RN-81)
+  updateFogo(dt) {
+    const ligado = this.elapsed < this.chamasAte && !this.ended;
+    if (ligado) {
+      this.chamasEmite -= dt;
+      const cada = this.efeitosReduzidos ? 0.07 : 0.025, porVez = this.efeitosReduzidos ? 1 : 3;
+      while (this.chamasEmite <= 0) {
+        this.chamasEmite += cada;
+        const a = this.chamasAng !== undefined ? this.chamasAng : this.player.rotation - Math.PI / 2;
+        const bx = this.player.x + Math.cos(a) * 20, by = this.player.y + Math.sin(a) * 20;
+        for (let k = 0; k < porVez; k++) {
+          const f = this.chamasFx.get(bx, by);
+          if (!f) break;
+          const aa = a + (Math.random() - 0.5) * 0.6, vel = PODER_CHAMAS_ALCANCE * (3.2 + Math.random() * 0.8);
+          f.setActive(true).setVisible(true).setPosition(bx, by).setDepth(9).setAlpha(1).setScale(0.4).setTint(0xfffbeb);
+          f.rotation = Math.random() * 6.28;
+          f.vx = Math.cos(aa) * vel; f.vy = Math.sin(aa) * vel;
+          f.vida = 0.42 + Math.random() * 0.12; f.vidaMax = f.vida;
+          this.chamasVivas++;
+        }
+      }
     }
+    const freio = Math.max(0, 1 - 3 * dt);   // o fogo perde força longe da nave
+    this.chamasFx.children.iterate((f) => {
+      if (!f || !f.active) return;
+      f.vida -= dt;
+      if (f.vida <= 0) { f.setActive(false).setVisible(false); this.chamasVivas--; return; }
+      const idade = 1 - f.vida / f.vidaMax;   // 0 = acabou de sair, 1 = vai sumir
+      f.vx *= freio; f.vy *= freio;
+      f.x += f.vx * dt; f.y += f.vy * dt;
+      f.rotation += dt * 3;
+      f.setScale(0.4 + idade * 2.2);
+      f.setTint(idade < 0.15 ? 0xfef9c3 : idade < 0.35 ? 0xfde047 : idade < 0.6 ? 0xf97316 : idade < 0.82 ? 0xdc2626 : 0x57534e);
+      f.setAlpha(idade < 0.6 ? 0.95 : (1 - idade) * 2.2);
+    });
   }
   // ---------- ARMAS SUPREMAS (RN-66) ----------
   // Laser Aniquilador: um feixe reto que acerta tudo na linha

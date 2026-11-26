@@ -85,3 +85,28 @@ test('RN-79: na aula das joias do prólogo os monstros continuam vindo', async (
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('RN-81: lança-chamas solta chamas macias que mudam de cor (amarelo → laranja → vermelho) e somem depois', async () => {
+  const j = await abrirJogo({ busca: 'teste=1' });
+  try {
+    await esperarCena(j.pagina, 'Hangar');
+    await G(j.pagina, () => game.scene.getScene('Hangar').scene.start('Game', { ship: 0 }));
+    await esperarCena(j.pagina, 'Game');
+    await G(j.pagina, () => { const g = game.scene.getScene('Game'); g.hp = 1e9; g.mods.maxHp = 1e9; g.chamasAte = g.elapsed + 3; });
+    await esperar(1500);
+    const durante = await G(j.pagina, () => {
+      const g = game.scene.getScene('Game'), cores = new Set();
+      let n = 0;
+      g.chamasFx.children.iterate((f) => { if (f && f.active) { n++; cores.add(f.tintTopLeft); } });
+      return { n, cores: cores.size, textura: g.chamasFx.getFirstAlive() && g.chamasFx.getFirstAlive().texture.key };
+    });
+    assert.ok(durante.n >= 8, 'chamas na tela: ' + durante.n);
+    assert.ok(durante.cores >= 3, 'chama muda de cor');
+    assert.equal(durante.textura, 'fogo');
+    // espera o poder acabar no relógio do jogo (o navegador de teste roda mais devagar)
+    await j.pagina.waitForFunction(() => { const g = game.scene.getScene('Game'); return g.elapsed > g.chamasAte + 1; }, { timeout: 20000, polling: 200 });
+    const depois = await G(j.pagina, () => { const g = game.scene.getScene('Game'); let n = 0; g.chamasFx.children.iterate((f) => { if (f && f.active) n++; }); return { n, vivas: g.chamasVivas }; });
+    assert.deepEqual(depois, { n: 0, vivas: 0 }, 'acabou o poder, acabou o fogo');
+    assert.deepEqual(j.erros, []);
+  } finally { await j.fechar(); }
+});

@@ -64,6 +64,8 @@ class BootScene extends Phaser.Scene {
     gfxTexture(this, 'orb', 16, 16, (g) => { g.fillStyle(0x38bdf8, 0.5); g.fillCircle(8, 8, 8); g.fillStyle(0xe0f2fe); g.fillCircle(8, 8, 4); });
     // tiro de combo: brilho em volta + núcleo, branco para receber a cor do combo (RN-80)
     gfxTexture(this, 'bullet_combo', 16, 16, (g) => { g.fillStyle(0xffffff, 0.35); g.fillCircle(8, 8, 8); g.fillStyle(0xffffff, 0.8); g.fillCircle(8, 8, 5); g.fillStyle(0xffffff); g.fillCircle(8, 8, 3); });
+    // chama do lança-chamas: bola macia (borda transparente, centro forte), branca para receber a cor
+    gfxTexture(this, 'fogo', 24, 24, (g) => { [[12, 0.12], [10, 0.2], [8, 0.35], [6, 0.6], [4, 0.9]].forEach(([r, a]) => { g.fillStyle(0xffffff, a); g.fillCircle(12, 12, r); }); });
     gfxTexture(this, 'orb_combo', 16, 16, (g) => { g.fillStyle(0xffffff, 0.55); g.fillCircle(8, 8, 8); g.fillStyle(0xffffff); g.fillCircle(8, 8, 4); });
     gfxTexture(this, 'halo', 32, 32, (g) => { g.fillStyle(0xffffff, 0.18); g.fillCircle(16, 16, 16); g.fillStyle(0xffffff, 0.3); g.fillCircle(16, 16, 11); });
     gfxTexture(this, 'spark', 4, 4, (g) => { g.fillStyle(0xffffff); g.fillRect(0, 0, 4, 4); });
