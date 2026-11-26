@@ -50,7 +50,7 @@ const ROTEIRO_PROLOGO = [
   { id: 'telaCheia', min: 6, max: 14 },
   { id: 'mover', min: 10, max: 22 },
   { id: 'atirar', min: 22, max: 40 },
-  { id: 'joias', min: 8, max: 25 },
+  { id: 'joias', min: 6, max: 15 },
   { id: 'cartas', min: 4, max: 60 },
   { id: 'horda', min: 40, max: 50 },
   { id: 'bau', min: 6, max: 30 },

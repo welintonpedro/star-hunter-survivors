@@ -28,7 +28,7 @@ class GameScene extends Phaser.Scene {
     this.xpMult = 1 + this.bonusCq.xp; this.creditMult = 1 + this.bonusCq.creditos;
     this.ultimoDanoTempo = 0; this.progressoTimer = 1; this.bausSubchefe = 0; this.chanceArmaTravada = CHANCE_ARMA_TRAVADA;
     this.filaAvisos = []; this.avisoAtivo = false;
-    this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 180 });   // estoque de faíscas
+    this.faiscas = this.add.group({ defaultKey: 'spark', maxSize: 260 });   // estoque de faíscas
     this.gradeInimigos = new Map(); this.estoqueListas = [];                 // reaproveitados a cada quadro
     this.cullTimer = 0;
     this.weapons = []; this.passives = {}; this.sobrecargas = {};
@@ -217,7 +217,7 @@ class GameScene extends Phaser.Scene {
   wstats(w) {
     const def = WEAPONS[w.id];
     const s = def.stats(w.level);
-    if (w.evolved) def.evolve(s);
+    if (w.evolved) { def.evolve(s); s.visual = VISUAL_COMBOS[w.id]; }
     s.dmg *= this.mods.dmg;
     s.cd *= this.mods.cd;
     if (s.amount !== undefined) s.amount += this.mods.amount;
@@ -599,7 +599,12 @@ class GameScene extends Phaser.Scene {
     if (this.modo === 'arena') this.updateArena(dt);
     this.updateFaiscas(dt);
 
-    this.bullets.children.iterate((b) => { if (b && b.active) { b.life -= dt; if (b.life <= 0) b.disableBody(true, true); } });
+    this.bullets.children.iterate((b) => {
+      if (!b || !b.active) return;
+      b.life -= dt;
+      if (b.life <= 0) { b.disableBody(true, true); return; }
+      if (b.rastro) { b.rastroT -= dt; if (b.rastroT <= 0) { b.rastroT = 0.05; this.rastro(b.x, b.y, b.rastro); } }   // combo (RN-80)
+    });
     this.ebullets.children.iterate((b) => {
       if (!b || !b.active) return;
       b.life -= dt;
@@ -1152,6 +1157,33 @@ class GameScene extends Phaser.Scene {
       s.vx = Math.cos(a) * d / dur; s.vy = Math.sin(a) * d / dur; s.vida = dur; s.vidaMax = dur;
     }
   }
+  // ---------- VISUAL DOS COMBOS (RN-80): tudo do estoque de faíscas, nada criado por quadro ----------
+  // tiro com cara de combo: bola brilhante colorida que deixa rastro
+  visualCombo(b, v, cor, escala) {
+    if (!b || !v) return;
+    b.setTexture('bullet_combo').setTint(cor || v.cor).setScale(escala || 1.1);
+    if (!this.efeitosReduzidos) { b.rastro = v.cor2; b.rastroT = 0; }
+  }
+  // um pontinho parado que some aos poucos (rastro)
+  rastro(x, y, cor) {
+    const s = this.faiscas.get(x, y);
+    if (!s) return;
+    s.setActive(true).setVisible(true).setPosition(x, y).setTint(cor).setAlpha(0.9).setScale(1.1).setDepth(7);
+    s.vx = (Math.random() - 0.5) * 30; s.vy = (Math.random() - 0.5) * 30; s.vida = 0.25; s.vidaMax = 0.25;
+  }
+  // faíscas que voam de (x,y) até a nave (vida sugada pela Aura Vampírica)
+  faiscaAteNave(x, y, cor) {
+    const s = this.faiscas.get(x, y);
+    if (!s) return;
+    const dur = 0.35;
+    s.setActive(true).setVisible(true).setPosition(x, y).setTint(cor).setAlpha(1).setScale(1.5).setDepth(10);
+    s.vx = (this.player.x - x) / dur; s.vy = (this.player.y - y) / dur; s.vida = dur; s.vidaMax = dur;
+  }
+  // anel que cresce e some (explosões dos combos)
+  anelCombo(x, y, raio, cor, borda, ms, de) {
+    const c = this.add.circle(x, y, de || 10, cor, 0.25).setStrokeStyle(4, borda, 0.9).setDepth(9);
+    this.tweens.add({ targets: c, radius: raio, alpha: 0, duration: ms || 300, onComplete: () => c.destroy() });
+  }
   updateFaiscas(dt) {
     this.faiscas.children.iterate((s) => {
       if (!s || !s.active) return;
@@ -1197,7 +1229,8 @@ class GameScene extends Phaser.Scene {
     const b = this.bullets.get(x, y, 'bullet');
     if (!b) return;
     b.enableBody(true, x, y, true, true);
-    b.setDepth(8).clearTint().setScale(1);
+    b.setTexture('bullet').setDepth(8).clearTint().setScale(1);
+    b.rastro = 0; b.rastroT = 0;
     b.body.setCircle(5);
     b.setVelocity(Math.cos(a) * 620, Math.sin(a) * 620);
     b.life = 1.1; b.pierceLeft = pierce; b.hitSet = new Set(); b.dmg = dmg; b.ricochete = 0;
@@ -1213,7 +1246,7 @@ class GameScene extends Phaser.Scene {
     const base = Phaser.Math.Angle.Between(px, py, t.x, t.y);
     for (let i = 0; i < s.amount; i++) {
       const b = this.shoot(px, py, base + (i - (s.amount - 1) / 2) * 0.2, s.dmg, 0);
-      if (b) { b.ricochete = s.ricochete; b.setTint(0x93c5fd); }
+      if (b) { b.ricochete = s.ricochete; b.setTint(0x93c5fd); this.visualCombo(b, s.visual, 0, 1.2); }
     }
     this.player.rotation = base + Math.PI / 2;
     this.ultimaMira = this.elapsed;
@@ -1224,8 +1257,15 @@ class GameScene extends Phaser.Scene {
     const px = this.player.x, py = this.player.y, r = s.radius;
     const near = this.nearestTarget(r * 1.1);
     if (!near || Math.hypot(near.x - px, near.y - py) > r * 1.1 + (near.hitR || 14)) return false;
-    const anel = this.add.circle(px, py, 12, 0xf59e0b, 0.25).setStrokeStyle(6, 0xfbbf24, 0.9).setDepth(9);
-    this.tweens.add({ targets: anel, radius: r, alpha: 0, duration: 260, onComplete: () => anel.destroy() });
+    const v = s.visual;
+    if (v) {
+      // Colapso Gravitacional: um anel roxo se fecha (buraco negro) e depois explode
+      const suga = this.add.circle(px, py, r * 1.5, 0x1e1b4b, 0.25).setStrokeStyle(5, v.cor, 0.9).setDepth(9);
+      this.tweens.add({ targets: suga, radius: 14, alpha: 0.9, duration: 160, onComplete: () => { suga.destroy(); this.anelCombo(px, py, r, v.cor, v.cor2, 300, 14); this.boom(px, py, 16, v.cor); } });
+    } else {
+      const anel = this.add.circle(px, py, 12, 0xf59e0b, 0.25).setStrokeStyle(6, 0xfbbf24, 0.9).setDepth(9);
+      this.tweens.add({ targets: anel, radius: r, alpha: 0, duration: 260, onComplete: () => anel.destroy() });
+    }
     this.cameras.main.shake(90, 0.004);
     this.forEachTarget((t) => {
       const d = Math.hypot(t.x - px, t.y - py);
@@ -1252,7 +1292,7 @@ class GameScene extends Phaser.Scene {
       const t = alvos[i % alvos.length];
       const a = Math.atan2(t.y - py, t.x - px) + (i >= alvos.length ? (Math.random() - 0.5) * 0.3 : 0);
       const b = this.shoot(px, py, a, s.dmg, s.pierce);
-      if (b) { b.setVelocity(Math.cos(a) * 950, Math.sin(a) * 950); b.setTint(0xf0abfc).setScale(0.8); b.life = 0.8; }
+      if (b) { b.setVelocity(Math.cos(a) * 950, Math.sin(a) * 950); b.setTint(0xf0abfc).setScale(0.8); b.life = 0.8; this.visualCombo(b, s.visual, 0, 0.9); }
     }
     return true;
   }
@@ -1262,8 +1302,9 @@ class GameScene extends Phaser.Scene {
     if (!t) return false;
     const px = this.player.x, py = this.player.y;
     const base = Phaser.Math.Angle.Between(px, py, t.x, t.y);
-    for (let i = 0; i < s.amount; i++) this.shoot(px, py, base + (i - (s.amount - 1) / 2) * 0.14, s.dmg, s.pierce);
-    if (s.ring) { this.ringCounter = (this.ringCounter || 0) + 1; if (this.ringCounter % 2 === 0) for (let i = 0; i < 10; i++) this.shoot(px, py, i / 10 * Math.PI * 2, s.dmg * 0.7, s.pierce); }
+    const v = s.visual;
+    for (let i = 0; i < s.amount; i++) this.visualCombo(this.shoot(px, py, base + (i - (s.amount - 1) / 2) * 0.14, s.dmg, s.pierce), v, 0, 1.2);
+    if (s.ring) { this.ringCounter = (this.ringCounter || 0) + 1; if (this.ringCounter % 2 === 0) for (let i = 0; i < 10; i++) this.visualCombo(this.shoot(px, py, i / 10 * Math.PI * 2, s.dmg * 0.7, s.pierce), v, v && v.cor2, 1); }
     this.player.rotation = base + Math.PI / 2;
     this.ultimaMira = this.elapsed;
     return true;
@@ -1275,6 +1316,7 @@ class GameScene extends Phaser.Scene {
       const a = Math.random() * Math.PI * 2;
       const m = this.add.image(this.player.x, this.player.y, 'missile').setDepth(8).setScale(s.radius > 80 ? 1.5 : 1.2);
       m.ang = a; m.speed = 260; m.life = 3; m.dmg = s.dmg; m.radius = s.radius; m.target = null;
+      if (s.visual) { m.setTint(s.visual.cor); m.visual = s.visual; m.rastroT = 0; }
       this.missiles.push(m);
     }
     return true;
@@ -1369,6 +1411,7 @@ class GameScene extends Phaser.Scene {
       const a = Math.random() * Math.PI * 2;
       const m = this.add.image(this.player.x, this.player.y, 'missile').setDepth(8).setScale(2.4).setTint(0xfca5a5);
       m.ang = a; m.speed = 150; m.velMax = 330; m.life = 4; m.dmg = s.dmg; m.radius = s.radius; m.target = null; m.grande = true;
+      if (s.visual) { m.setTint(s.visual.cor).setScale(2.8); m.visual = s.visual; m.rastroT = 0; }
       this.missiles.push(m);
     }
     return true;
@@ -1380,7 +1423,7 @@ class GameScene extends Phaser.Scene {
     const anel = (atraso) => {
       for (let i = 0; i < n; i++) {
         const b = this.shoot(px, py, giro + atraso + i / n * Math.PI * 2, s.dmg, s.pierce);
-        if (b) { b.setTint(0x67e8f9); b.life = 0.8; }
+        if (b) { b.setTint(0x67e8f9); b.life = 0.8; if (s.visual) this.visualCombo(b, s.visual, s.visual.cores[i % s.visual.cores.length], 1); }
       }
     };
     anel(0);
@@ -1403,18 +1446,26 @@ class GameScene extends Phaser.Scene {
       m.speed = Math.min(m.velMax || 480, m.speed + (m.grande ? 220 : 500) * dt);
       m.x += Math.cos(m.ang) * m.speed * dt; m.y += Math.sin(m.ang) * m.speed * dt;
       m.rotation = m.ang + Math.PI / 2;
+      if (m.visual && !this.efeitosReduzidos) { m.rastroT -= dt; if (m.rastroT <= 0) { m.rastroT = 0.04; this.rastro(m.x, m.y, m.visual.cor2); } }
       const hit = m.target && Math.hypot(m.target.x - m.x, m.target.y - m.y) < (m.target.hitR || 14) + 6;
       if (hit || m.life <= 0) {
-        this.explode(m.x, m.y, m.radius, m.dmg);
-        if (m.grande) { this.cameras.main.shake(120, 0.006); this.boom(m.x, m.y, 18, 0xf97316); }
+        this.explode(m.x, m.y, m.radius, m.dmg, m.visual);
+        if (m.grande) { this.cameras.main.shake(120, 0.006); this.boom(m.x, m.y, 18, m.visual ? m.visual.cor : 0xf97316); }
         m.destroy();
         this.missiles.splice(i, 1);
       }
     }
   }
-  explode(x, y, radius, dmg) {
-    const c = this.add.circle(x, y, radius, 0xf97316, 0.35).setDepth(9).setStrokeStyle(2, 0xfde047, 0.8);
-    this.tweens.add({ targets: c, alpha: 0, scale: 1.2, duration: 250, onComplete: () => c.destroy() });
+  explode(x, y, radius, dmg, v) {
+    if (v) {
+      // combo: explosão dupla nas cores do combo (Enxame Nuclear verde, Ogiva Solar dourada)
+      this.anelCombo(x, y, radius * 1.15, v.cor, v.cor2, 320, radius * 0.3);
+      const nucleo = this.add.circle(x, y, radius * 0.55, v.cor2, 0.55).setDepth(9);
+      this.tweens.add({ targets: nucleo, alpha: 0, scale: 1.4, duration: 220, onComplete: () => nucleo.destroy() });
+    } else {
+      const c = this.add.circle(x, y, radius, 0xf97316, 0.35).setDepth(9).setStrokeStyle(2, 0xfde047, 0.8);
+      this.tweens.add({ targets: c, alpha: 0, scale: 1.2, duration: 250, onComplete: () => c.destroy() });
+    }
     const r2 = radius * radius;
     this.forEachTarget((t) => {
       const d2 = (t.x - x) * (t.x - x) + (t.y - y) * (t.y - y);
@@ -1426,8 +1477,12 @@ class GameScene extends Phaser.Scene {
     const px = this.player.x, py = this.player.y;
     const near = this.nearestTarget(s.radius * 1.2);
     if (!near || Math.hypot(near.x - px, near.y - py) > s.radius * 1.2 + (near.hitR || 14)) return false;
-    const ring = this.add.circle(px, py, 10, 0xa78bfa, 0.18).setStrokeStyle(3, 0xc4b5fd, 0.9).setDepth(9);
-    this.tweens.add({ targets: ring, radius: s.radius, alpha: 0, duration: 300, onComplete: () => ring.destroy() });
+    const v = s.visual;
+    if (v) this.anelCombo(px, py, s.radius, v.cor, v.cor2, 320);   // Aura Vampírica: onda vermelho-sangue
+    else {
+      const ring = this.add.circle(px, py, 10, 0xa78bfa, 0.18).setStrokeStyle(3, 0xc4b5fd, 0.9).setDepth(9);
+      this.tweens.add({ targets: ring, radius: s.radius, alpha: 0, duration: 300, onComplete: () => ring.destroy() });
+    }
     let healed = 0;
     const r = s.radius;
     this.forEachTarget((t) => {
@@ -1435,7 +1490,10 @@ class GameScene extends Phaser.Scene {
       if (d < r + (t.hitR || 14)) {
         this.damageTarget(t, s.dmg);
         this.knock(t, px, py, 380);
-        if (s.heal && !t.isRock && healed < 10) { healed++; this.hp = Math.min(this.mods.maxHp, this.hp + 0.8); }
+        if (s.heal && !t.isRock && healed < 10) {
+          healed++; this.hp = Math.min(this.mods.maxHp, this.hp + 0.8);
+          if (v && healed <= 6 && !this.efeitosReduzidos) this.faiscaAteNave(t.x, t.y, v.cor2);   // a vida voa até a nave
+        }
       }
     });
     return true;
@@ -1448,13 +1506,14 @@ class GameScene extends Phaser.Scene {
     this.rocks.children.iterate((r) => { if (r && r.active && Math.hypot(r.x - px, r.y - py) < METEORO_PERTO) pool.push(r); });
     if (!pool.length) return false;
     const g = this.add.graphics().setDepth(12);
-    g.lineStyle(3, 0x67e8f9, 1);
+    const v = s.visual;
+    g.lineStyle(v ? 6 : 3, v ? v.cor : 0x67e8f9, v ? 0.85 : 1);   // Tempestade Elétrica: raio dourado grosso
     const hit = new Set();
     for (let k = 0; k < s.amount; k++) {
       let cur = Phaser.Utils.Array.GetRandom(pool.filter((e) => !hit.has(e))) || pool[0];
       let fromX = px, fromY = py;
       for (let j = 0; j <= s.jumps && cur; j++) {
-        this.zigzag(g, fromX, fromY, cur.x, cur.y);
+        this.zigzag(g, fromX, fromY, cur.x, cur.y, v);
         hit.add(cur);
         fromX = cur.x; fromY = cur.y;
         const target = cur;
@@ -1467,14 +1526,15 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: g, alpha: 0, duration: 220, onComplete: () => g.destroy() });
     return true;
   }
-  zigzag(g, x1, y1, x2, y2) {
-    const steps = 5;
-    g.beginPath(); g.moveTo(x1, y1);
+  zigzag(g, x1, y1, x2, y2, v) {
+    const steps = 5, pts = this._zz || (this._zz = []);   // pontos reaproveitados
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
-      g.lineTo(x1 + (x2 - x1) * t + (Math.random() - 0.5) * 18, y1 + (y2 - y1) * t + (Math.random() - 0.5) * 18);
+      pts[i * 2] = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 18; pts[i * 2 + 1] = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 18;
     }
-    g.lineTo(x2, y2); g.strokePath();
+    const linha = () => { g.beginPath(); g.moveTo(x1, y1); for (let i = 1; i < steps; i++) g.lineTo(pts[i * 2], pts[i * 2 + 1]); g.lineTo(x2, y2); g.strokePath(); };
+    linha();
+    if (v) { g.lineStyle(2, v.cor2, 1); linha(); g.lineStyle(6, v.cor, 0.85); }   // núcleo branco por dentro
   }
 
   fireDiscs(s) {
@@ -1485,6 +1545,7 @@ class GameScene extends Phaser.Scene {
       const d = this.add.image(this.player.x, this.player.y, 'disc').setDepth(8).setScale(s.size);
       d.dirx = Math.cos(a); d.diry = Math.sin(a); d.out = 0; d.back = false;
       d.dmg = s.dmg; d.range = s.range; d.r = 12 * s.size; d.hits = new Map(); d.pull = s.pull;
+      if (s.visual) { d.setTint(s.visual.cor); d.visual = s.visual; d.rastroT = 0; }   // Vórtice Serrilhado: serra em chamas
       this.discs.push(d);
     }
     return true;
@@ -1492,7 +1553,11 @@ class GameScene extends Phaser.Scene {
   updateDiscs(dt) {
     for (let i = this.discs.length - 1; i >= 0; i--) {
       const d = this.discs[i];
-      d.rotation += dt * 14;
+      d.rotation += dt * (d.visual ? 20 : 14);
+      if (d.visual && !this.efeitosReduzidos) {
+        d.rastroT -= dt;
+        if (d.rastroT <= 0) { d.rastroT = 0.06; const a = d.rotation; this.rastro(d.x + Math.cos(a) * d.r, d.y + Math.sin(a) * d.r, Math.random() < 0.5 ? d.visual.cor : d.visual.cor2); }
+      }
       if (!d.back) {
         const step = 460 * dt;
         d.x += d.dirx * step; d.y += d.diry * step; d.out += step;
@@ -1520,13 +1585,23 @@ class GameScene extends Phaser.Scene {
   updateOrbitals(dt, s) {
     const want = s ? s.amount : 0;
     while (this.orbs.length < want) this.orbs.push(this.add.image(0, 0, 'orb').setDepth(11));
-    while (this.orbs.length > want) this.orbs.pop().destroy();
+    while (this.orbs.length > want) { const o = this.orbs.pop(); if (o.halo) o.halo.destroy(); o.destroy(); }
     if (!want) return;
+    // Halo Eterno: esferas douradas com um halo que pulsa (criado uma vez, reaproveitado)
+    const v = s.visual;
+    if (v && !this.efeitosReduzidos) {
+      const pulso = 1 + Math.sin(this.elapsed * 6) * 0.15;
+      this.orbs.forEach((o) => {
+        if (!o.halo) { o.setTexture('orb_combo').setTint(v.cor); o.halo = this.add.image(0, 0, 'halo').setDepth(10).setTint(v.cor).setBlendMode(Phaser.BlendModes.ADD); }
+        o.halo.setScale(s.size * 1.3 * pulso);
+      });
+    } else if (v) this.orbs.forEach((o) => o.setTexture('orb_combo').setTint(v.cor));
     this.orbAngle += dt * s.spin;
     const R = s.radius, n = this.orbs.length;
     this.orbs.forEach((o, i) => {
       const a = this.orbAngle + i / n * Math.PI * 2;
       o.setPosition(this.player.x + Math.cos(a) * R, this.player.y + Math.sin(a) * R).setScale(s.size);
+      if (o.halo) o.halo.setPosition(o.x, o.y);
     });
     const hitR = 10 * s.size;
     this.forEachTarget((t) => {
@@ -1999,6 +2074,8 @@ class GameScene extends Phaser.Scene {
         fixo(this.add.image(x, y0 + 8, k).setDisplaySize(48, 48), 4));
       ['+', '='].forEach((t, k) => fixo(this.add.text(W / 2 - 50 + k * 100, y0 + 8, t, { fontFamily: 'Arial Black, Arial', fontSize: '26px', color: '#fde047' }).setOrigin(0.5), 4));
       fixo(this.add.text(W / 2, y0 + 50, '★ ' + d.evoName + ' ★' + (m.comboNovo ? '   ' + tx('(COMBO DESCOBERTO! guardado no códex)') : ''), { fontFamily: 'Arial', fontSize: '15px', color: '#f5d0fe' }).setOrigin(0.5), 4);
+      const vc = VISUAL_COMBOS[m.comboId];   // o que muda no visual (RN-80)
+      if (vc) fixo(this.add.text(W / 2, y0 + 68, tx(vc.efeito), { fontFamily: 'Arial', fontSize: '12px', color: '#fde68a' }).setOrigin(0.5), 4);
     } else {
       ganhos.forEach((g, k) => {
         const x = W / 2 + (k - (ganhos.length - 1) / 2) * 130;

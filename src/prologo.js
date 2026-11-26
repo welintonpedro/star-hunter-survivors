@@ -96,6 +96,7 @@ Object.assign(GameScene.prototype, {
       this.ondaPrologo(20);
     } else if (id === 'joias') {
       this.falaPrologo(tx('Pegue as joias brilhantes para subir de nível!'));
+      pr.ondaT = 0;   // a próxima leva de monstros já vem (a tela não esvazia durante a aula)
       this.xp = Math.max(this.xp, this.xpNext - 2);
     } else if (id === 'cartas') {
       this.falaPrologo(tx('Escolha uma carta!\nNa dúvida, pegue a RECOMENDADA.'));
@@ -168,8 +169,13 @@ Object.assign(GameScene.prototype, {
       this.surpresaPrologo(pr, 12, 'sub1', () => this.subchefePrologo());   // ~40 s: primeiro subchefe
     } else if (id === 'joias') {
       pronto = !!pr.eventos.carta;
-      this.apontarSeta(this.gemaMaisPerto());
-      if (!this.gemaMaisPerto()) this.dropGem(this.player.x + 150, this.player.y, 3);
+      this.manterOnda(dt, 2, 10, 55);   // os monstros não somem enquanto ele busca a joia (RN-79)
+      const gema = this.gemaMaisPerto();
+      this.apontarSeta(gema);
+      // joia longe ou nenhuma: põe uma pertinho, para a aula não demorar
+      if (!gema || Math.hypot(gema.x - this.player.x, gema.y - this.player.y) > 320) {
+        if (!pr.joiaPerto) { pr.joiaPerto = true; this.dropGem(this.player.x + 140, this.player.y, 3); }
+      }
     } else if (id === 'cartas') pronto = !!pr.eventos.fechou;
     else if (id === 'horda') {
       this.manterOnda(dt, 2, 14, 110);

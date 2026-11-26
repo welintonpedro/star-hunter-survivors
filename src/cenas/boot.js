@@ -62,6 +62,10 @@ class BootScene extends Phaser.Scene {
         g.fillStyle(0xffffff, 0.9); g.fillTriangle(9, 4, 12, 8, 7, 8);
       }));
     gfxTexture(this, 'orb', 16, 16, (g) => { g.fillStyle(0x38bdf8, 0.5); g.fillCircle(8, 8, 8); g.fillStyle(0xe0f2fe); g.fillCircle(8, 8, 4); });
+    // tiro de combo: brilho em volta + núcleo, branco para receber a cor do combo (RN-80)
+    gfxTexture(this, 'bullet_combo', 16, 16, (g) => { g.fillStyle(0xffffff, 0.35); g.fillCircle(8, 8, 8); g.fillStyle(0xffffff, 0.8); g.fillCircle(8, 8, 5); g.fillStyle(0xffffff); g.fillCircle(8, 8, 3); });
+    gfxTexture(this, 'orb_combo', 16, 16, (g) => { g.fillStyle(0xffffff, 0.55); g.fillCircle(8, 8, 8); g.fillStyle(0xffffff); g.fillCircle(8, 8, 4); });
+    gfxTexture(this, 'halo', 32, 32, (g) => { g.fillStyle(0xffffff, 0.18); g.fillCircle(16, 16, 16); g.fillStyle(0xffffff, 0.3); g.fillCircle(16, 16, 11); });
     gfxTexture(this, 'spark', 4, 4, (g) => { g.fillStyle(0xffffff); g.fillRect(0, 0, 4, 4); });
     gfxTexture(this, 'missile', 8, 16, (g) => {
       g.fillStyle(0xe5e7eb); g.fillRect(2, 4, 4, 9);

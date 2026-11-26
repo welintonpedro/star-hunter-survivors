@@ -111,5 +111,22 @@ const PASSIVES = {
   engine: { name: 'Motor Iônico',      abbr: 'MI', color: 0x4ade80, desc: '+10% velocidade da nave', max: 5 },
   regen:  { name: 'Nanorreparo',       abbr: 'NR', color: 0xf472b6, desc: '+0,5 de vida por segundo', max: 5 }
 };
+// ============ VISUAL DOS COMBOS (RN-80) ============
+// Cada arma evoluída ganha cores e efeito próprios. cor = principal, cor2 = brilho/rastro.
+// Só cores e enfeites: o dano vem de evolve() acima. Mude à vontade.
+const VISUAL_COMBOS = {
+  rajada:      { cor: 0xfb923c, cor2: 0xfde047, efeito: 'Tiros de fogo com rastro de brasas' },
+  martelo:     { cor: 0x7c3aed, cor2: 0xe9d5ff, efeito: 'Buraco negro que suga e explode em roxo' },
+  agulhas:     { cor: 0xf472b6, cor2: 0xffffff, efeito: 'Agulhas de cristal rosa com rastro brilhante' },
+  pulsar:      { cor: 0xfde047, cor2: 0x67e8f9, efeito: 'Estrelas douradas e anel de estrelas azuis' },
+  missiles:    { cor: 0x4ade80, cor2: 0xbbf7d0, efeito: 'Mísseis verdes com explosão nuclear dupla' },
+  orbital:     { cor: 0xfacc15, cor2: 0xfef9c3, efeito: 'Esferas douradas com halo pulsando' },
+  shock:       { cor: 0xdc2626, cor2: 0xfca5a5, efeito: 'Onda vermelha que puxa vida dos inimigos' },
+  chain:       { cor: 0xfacc15, cor2: 0xffffff, efeito: 'Raios dourados grossos com núcleo branco' },
+  disc:        { cor: 0xf97316, cor2: 0xfde047, efeito: 'Serras em chamas soltando faíscas' },
+  supermissil: { cor: 0xfacc15, cor2: 0xffffff, efeito: 'Ogiva dourada que explode como um sol' },
+  nova:        { cor: 0xf472b6, cor2: 0x67e8f9, cores: [0xf472b6, 0x67e8f9, 0xfacc15, 0xa78bfa], efeito: 'Anéis com as cores do arco-íris' }
+};
 function comboWeaponFor(pid) { return Object.keys(WEAPONS).find((k) => WEAPONS[k].evo === pid); }
+if (typeof module !== 'undefined') module.exports = { WEAPONS, PASSIVES, VISUAL_COMBOS, comboWeaponFor };
 
