@@ -10,9 +10,9 @@ const NAVES = ['falcao', 'tita', 'agulha'];
 const novo = () => saveInicial(1);
 const storage = (obj) => ({ getItem: (k) => (k === SAVE_KEY ? JSON.stringify(obj) : null), setItem() {}, removeItem() {} });
 
-test('save versão 4 traz combos, conquistas e estatísticas vazios; save antigo ganha esses campos', () => {
+test('save (versão 5 desde os recordes da RN-68/69) traz combos, conquistas e estatísticas vazios; save antigo ganha esses campos', () => {
   const s = novo();
-  assert.equal(SAVE_VERSION, 4);
+  assert.equal(SAVE_VERSION, 5);   // v5: recordes do infinito e da arena (ok do dono em 25/11)
   assert.deepEqual(s.combos, []);
   assert.deepEqual(s.conquistas, {});
   assert.equal(s.stats.abates, 0);
