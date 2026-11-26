@@ -7,7 +7,7 @@ class GameScene extends Phaser.Scene {
   init(data) { this.shipIndex = (data && data.ship) || 0; this.modo = (data && data.modo) || 'campanha'; }
 
   create() {
-    const ship = SHIPS[this.shipIndex];
+    const ship = this.modo === 'prologo' ? NAVE_PROLOGO : SHIPS[this.shipIndex];   // prólogo: nave exclusiva Eclipse
     this.ship = ship; this.gi = ship.galaxy; this.gal = GALAXIES[this.gi];
 
     // estado da partida
@@ -77,9 +77,11 @@ class GameScene extends Phaser.Scene {
 
     this.setupInput();
     this.createHUD();
+    this.criarAjudasDeControle();   // botão MOVER no celular, teclas no computador (src/ajudas.js)
     if (MODO_TESTE) criarPainelTeste(this);
     this.banner(this.gal.name, '#' + this.gal.starTint.toString(16).padStart(6, '0'));
     if (this.modo === 'arena') this.iniciarArena();                       // src/arena.js
+    if (this.modo === 'prologo') this.iniciarPrologo();                   // src/prologo.js
     if (this.modo === 'infinito') this.banner(tx('MODO INFINITO: até a nave cair'), '#a5f3fc');
   }
 
@@ -362,9 +364,13 @@ class GameScene extends Phaser.Scene {
     this.joyKnob = this.add.circle(0, 0, 22, 0xffffff, 0.25).setScrollFactor(0).setDepth(141).setVisible(false);
     this.input.on('pointerdown', (p, over) => {
       if ((over && over.length) || this.paused || this.ended || this.menuPausa) return;
-      this.joy.active = true; this.joy.sx = p.x; this.joy.sy = p.y;
-      this.joyBase.setPosition(p.x, p.y).setVisible(true);
+      // tocar no botão MOVER (ou perto dele) usa o centro dele; tocar em outro lugar cria o controle ali
+      const casa = this.joyCasa, perto = casa && Math.hypot(p.x - casa.x, p.y - casa.y) < 120;
+      const cx = perto ? casa.x : p.x, cy = perto ? casa.y : p.y;
+      this.joy.active = true; this.joy.sx = cx; this.joy.sy = cy;
+      this.joyBase.setPosition(cx, cy).setVisible(true);
       this.joyKnob.setPosition(p.x, p.y).setVisible(true);
+      if (perto) { const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(d, 50); this.joy.dx = dx / d * k / 50; this.joy.dy = dy / d * k / 50; }
     });
     this.input.on('pointermove', (p) => {
       if (!this.joy.active) return;
@@ -374,10 +380,15 @@ class GameScene extends Phaser.Scene {
       this.joy.dx = dx / max; this.joy.dy = dy / max;
       this.joyKnob.setPosition(this.joy.sx + dx, this.joy.sy + dy);
     });
-    this.input.on('pointerup', () => {
-      this.joy.active = false; this.joy.dx = 0; this.joy.dy = 0;
-      this.joyBase.setVisible(false); this.joyKnob.setVisible(false);
-    });
+    this.input.on('pointerup', () => this.soltarControle());
+  }
+  // solta o controle de toque: com o botão MOVER, ele volta para o canto; sem, some
+  soltarControle() {
+    this.joy.active = false; this.joy.dx = 0; this.joy.dy = 0;
+    if (this.joyCasa) {
+      this.joyBase.setPosition(this.joyCasa.x, this.joyCasa.y).setVisible(true);
+      this.joyKnob.setPosition(this.joyCasa.x, this.joyCasa.y).setVisible(true);
+    } else { this.joyBase.setVisible(false); this.joyKnob.setVisible(false); }
   }
 
   // ---------- PAUSA (botão II, ESC, P ou trocar de aba) ----------
@@ -390,7 +401,7 @@ class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.time.paused = true;
     this.tweens.pauseAll();
-    this.joy.active = false; this.joyBase.setVisible(false); this.joyKnob.setVisible(false);
+    this.soltarControle();
     this.player.setVelocity(0, 0);
     const D = 400;
     const parts = [
@@ -414,7 +425,7 @@ class GameScene extends Phaser.Scene {
       abrirCodex(this, () => { this.codexAberto = false; });
     });
     // recolher nave também na pausa (RN-32)
-    botao(H / 2 + 46, tx('RECOLHER NAVE'), () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
+    if (this.modo !== 'prologo') botao(H / 2 + 46, tx('RECOLHER NAVE'), () => this.endRun('retreat'), 0x3f3f46, 0xa1a1aa);
     this.menuPausa = { parts };
   }
   fecharPausa() {
@@ -438,7 +449,7 @@ class GameScene extends Phaser.Scene {
     this.xpFill = this.add.rectangle(0, H - 10, W, 10, 0x22d3ee).setOrigin(0).setScrollFactor(0).setDepth(D + 1);
 
     makeButton(this, W - 30, 26, 40, 30, 'II', () => this.alternarPausa(), { fixed: true, depth: D, size: 15 });
-    makeButton(this, W - 140, 26, 160, 30, tx('RECOLHER NAVE'), () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
+    if (this.modo !== 'prologo') makeButton(this, W - 140, 26, 160, 30, tx('RECOLHER NAVE'), () => this.endRun('retreat'), { fixed: true, depth: D, size: 12, color: 0x3f3f46, stroke: 0xa1a1aa });
 
     this.bossBarBg = this.add.rectangle(W / 2, 54, 400, 14, 0x000000, 0.7).setScrollFactor(0).setDepth(D).setVisible(false);
     this.bossBar = this.add.rectangle(W / 2 - 198, 54, 396, 10, 0xa855f7).setOrigin(0, 0.5).setScrollFactor(0).setDepth(D + 1).setVisible(false);
@@ -492,11 +503,11 @@ class GameScene extends Phaser.Scene {
   updateHUD() {
     this.hpFill.setScale(clamp(this.hp / this.mods.maxHp, 0, 1), 1);
     this.hpText.setText(Math.ceil(Math.max(0, this.hp)) + ' / ' + Math.ceil(this.mods.maxHp));
-    let info = tx('Nível {n}   Abates {a}   Créditos +{c}', { n: this.level, a: this.kills, c: fmt(this.runCredits) });
+    let info = this.modo === 'prologo' ? tx('Nível {n}   Abates {a}', { n: this.level, a: this.kills }) : tx('Nível {n}   Abates {a}   Créditos +{c}', { n: this.level, a: this.kills, c: fmt(this.runCredits) });
     if (this.modo === 'infinito') info += '   ' + tx('Pontos {p}', { p: fmt(this.pontosAtuais()) });
     if (this.modo === 'arena') info += '   ' + tx('Naves vivas {n}', { n: this.colocacaoArena() });
     this.infoText.setText(info);
-    this.timeText.setText(this.modo === 'infinito' ? fmtTime(this.elapsed) + '  ∞' : this.modo === 'arena' ? fmtTime(this.elapsed) + ' / ' + fmtTime(ARENA.duracao) : fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
+    this.timeText.setText(this.modo === 'prologo' ? tx('ANO 3025') : this.modo === 'infinito' ? fmtTime(this.elapsed) + '  ∞' : this.modo === 'arena' ? fmtTime(this.elapsed) + ' / ' + fmtTime(ARENA.duracao) : fmtTime(this.elapsed) + ' / ' + fmtTime(EVENTOS.duracao));
     this.xpFill.setScale(Math.min(1, this.xp / this.xpNext), 1);
     if (this.boss && !this.boss.active) this.boss = this.chefeVivo();
     if (this.boss && this.boss.active) {
@@ -508,6 +519,7 @@ class GameScene extends Phaser.Scene {
 
   // Linha de aviso no rodapé: o que vem a seguir
   textoDica() {
+    if (this.modo === 'prologo') return '';
     if (this.modo === 'arena') {
       if (Math.hypot(this.player.x - this.zona.x, this.player.y - this.zona.y) > this.zona.r) return tx('VOLTE PARA A ZONA SEGURA!');
       return this.elapsed < ARENA.duracao ? tx('A zona fecha de vez em {tempo}', { tempo: fmtTime(ARENA.duracao - this.elapsed) }) : tx('A ZONA ESTÁ FECHANDO!');
@@ -570,6 +582,7 @@ class GameScene extends Phaser.Scene {
     if (this.ended || this.paused || this.menuPausa) return;
     const dt = Math.min(delta, 50) / 1000;
     this.elapsed += dt;
+    if (this.modo === 'prologo') this.updatePrologo(dt);
 
     if (this.mods.regen > 0) this.hp = Math.min(this.mods.maxHp, this.hp + this.mods.regen * dt);
     this.invuln -= dt;
@@ -620,6 +633,7 @@ class GameScene extends Phaser.Scene {
   }
 
   bankCredits() {
+    if (this.modo === 'prologo') return;
     const add = Math.floor(this.runCredits) - this.banked;
     if (add > 0) { SAVE.credits += add; this.banked += add; }
     writeSave(SAVE);
@@ -627,6 +641,7 @@ class GameScene extends Phaser.Scene {
 
   movePlayer() {
     let vx = 0, vy = 0;
+    let moveuTeclado = false;
     if (this.joy.active) { vx = this.joy.dx; vy = this.joy.dy; }
     else {
       const c = this.cursors, k = this.keys;
@@ -634,7 +649,9 @@ class GameScene extends Phaser.Scene {
       if (c.right.isDown || k.D.isDown) vx += 1;
       if (c.up.isDown || k.W.isDown) vy -= 1;
       if (c.down.isDown || k.S.isDown) vy += 1;
+      moveuTeclado = vx !== 0 || vy !== 0;
     }
+    this.updateAjudas(moveuTeclado, this.joy.active && (Math.abs(this.joy.dx) + Math.abs(this.joy.dy) > 0.2));   // src/ajudas.js
     const len = Math.hypot(vx, vy);
     if (len > 1) { vx /= len; vy /= len; }
     this.moveDir = len > 0.1 ? { x: vx / Math.max(len, 1), y: vy / Math.max(len, 1) } : null;
@@ -692,7 +709,7 @@ class GameScene extends Phaser.Scene {
     return Math.pow(INFINITO.crescimentoPorMinuto, (this.elapsed - INFINITO.inicioExtra) / 60);
   }
   // Na arena os monstros "andam no tempo" mais rápido (8 min de arena = 16 min de campanha)
-  tempoInimigos() { return this.modo === 'arena' ? this.elapsed * ARENA.ritmoInimigos : this.elapsed; }
+  tempoInimigos() { return this.modo === 'arena' ? this.elapsed * ARENA.ritmoInimigos : this.modo === 'prologo' ? 0 : this.elapsed; }
 
   // inimigos comuns vivos (sem contar subchefes e chefes)
   contarComuns() {
@@ -737,7 +754,7 @@ class GameScene extends Phaser.Scene {
     e.setDepth(5).clearTint();
     e.body.setCircle(t.radius, e.width / 2 - t.radius, e.height / 2 - t.radius);
     const linhaMin = linhaDoMinuto(ONDAS, this.tempoInimigos()), extra = this.fatorExtra(), vidaMinuto = linhaMin.vida * extra;
-    e.hp = e.maxHp = t.hp * this.gal.hpMult * vidaMinuto;
+    e.hp = e.maxHp = t.hp * this.gal.hpMult * vidaMinuto * (this.modo === 'prologo' ? PROLOGO_INICIO.vidaInimigos : 1);
     e.speedV = t.speed * this.gal.speedMult * (0.9 + Math.random() * 0.2);
     e.damage = t.damage * Math.sqrt(this.gal.hpMult) * linhaMin.dano * extra;   // fica mais forte com o tempo
     e.reward = t.reward; e.xpVal = t.xp; e.hitR = t.radius;
@@ -1080,9 +1097,10 @@ class GameScene extends Phaser.Scene {
       // explodiu sozinho (kamikaze, bomba-relógio) não dá recompensa nem efeito de morte
       if (e.isElite || e.isBoss) this.runCredits += e.reward * mult;   // inimigo comum não dá créditos (RN-56)
       this.kills++;
-      SAVE.stats.abates++;
-      if (e.isElite) { SAVE.stats.subchefes++; this.subchefesMortos++; }
-      if (e.isBoss) { SAVE.stats.chefes++; this.chefesMortos++; }
+      const contar = this.modo !== 'prologo';   // o prólogo não entra nas estatísticas
+      if (contar) SAVE.stats.abates++;
+      if (e.isElite) { if (contar) SAVE.stats.subchefes++; this.subchefesMortos++; }
+      if (e.isBoss) { if (contar) SAVE.stats.chefes++; this.chefesMortos++; }
       this.dropGem(e.x, e.y, e.xpVal);
       if (AO_MORRER[e.comp]) AO_MORRER[e.comp](this, e);
     }
@@ -1108,6 +1126,7 @@ class GameScene extends Phaser.Scene {
   }
   // Sorteio pelo peso da tabela METEORO_ITENS (src/config.js); semMoeda = cristal (moeda já vem garantida)
   sortearItemMeteoro(semMoeda) {
+    if (this.forcarItemMeteoro) { const k = this.forcarItemMeteoro; this.forcarItemMeteoro = null; return k; }   // roteiro do prólogo
     let total = 0;
     for (const k in METEORO_ITENS) if (!(semMoeda && k === 'coin')) total += METEORO_ITENS[k];
     let r = Math.random() * total;
@@ -1634,7 +1653,7 @@ class GameScene extends Phaser.Scene {
 
   // Arma travada achada: soma no save; na 3ª vez passa a aparecer nas cartas (RN-35)
   contarArmaAchada(id) {
-    if (!WEAPONS[id].hidden || armaLiberada(SAVE, id)) return;
+    if (this.modo === 'prologo' || !WEAPONS[id].hidden || armaLiberada(SAVE, id)) return;   // prólogo não mexe no progresso
     const n = registrarArmaAchada(SAVE, id);
     if (armaLiberada(SAVE, id)) {
       if (this.armasDaPartida && !this.armasDaPartida.includes(id)) this.armasDaPartida.push(id);   // liberada agora: já vale nesta partida
@@ -1645,6 +1664,7 @@ class GameScene extends Phaser.Scene {
 
   // ---------- CONQUISTAS E ESTATÍSTICAS (RN-34 a RN-39) ----------
   atualizarProgresso() {
+    if (this.modo === 'prologo') return;   // o prólogo não conta para conquistas nem estatísticas
     const st = SAVE.stats, chave = this.gi + ':' + this.ship.id;
     st.maiorSemDano = Math.max(st.maiorSemDano, this.elapsed - this.ultimoDanoTempo);
     st.nivelMax = Math.max(st.nivelMax, this.level);
@@ -1693,7 +1713,7 @@ class GameScene extends Phaser.Scene {
       const d = Math.hypot(p.x - px, p.y - py);
       if (!p.discovered && d < 520) {
         p.discovered = true;
-        const ja = SAVE.stats.locais[this.gi] || (SAVE.stats.locais[this.gi] = []);
+        const ja = this.modo === 'prologo' ? [] : SAVE.stats.locais[this.gi] || (SAVE.stats.locais[this.gi] = []);
         if (!ja.includes(p.indice)) ja.push(p.indice);   // conta para a conquista de explorar
         this.banner(tx('DESCOBERTO: {nome}', { nome: p.name }), '#a5f3fc');
         if (p.type === 'nest') this.triggerNest(p);
@@ -1796,7 +1816,7 @@ class GameScene extends Phaser.Scene {
     while (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
-      this.xpNext = xpParaProximoNivel(this.level);   // curva em src/dados/progressao.js
+      this.xpNext = this.modo === 'prologo' ? PROLOGO_INICIO.xpPorNivel : xpParaProximoNivel(this.level);   // curva em src/dados/progressao.js
       this.pendingLevels++;
     }
     if (this.pendingLevels > 0) this.openNextModal();
@@ -1813,12 +1833,13 @@ class GameScene extends Phaser.Scene {
   pauseForModal() {
     this.paused = true;
     this.physics.pause();
-    this.joy.active = false; this.joyBase.setVisible(false); this.joyKnob.setVisible(false);
+    this.soltarControle();
   }
   closeModal() {
     if (!this.modal) return;
     this.modal.parts.forEach((p) => p.destroy());
     this.modal = null;
+    if (this.modo === 'prologo') this.eventoPrologo('fechou');
     this.openNextModal();
   }
   modalPick(i) {
@@ -1839,6 +1860,11 @@ class GameScene extends Phaser.Scene {
     this.pauseForModal();
     let options = this.pickWeighted(this.upgradeOptions(), 3);
     if (options.length < 3) options = options.concat(this.pickWeighted(this.opcoesSobrecarga(), 3 - options.length));
+    // roteiro do prólogo: esta carta mostra uma arma suprema
+    if (this.forcarSuprema && !this.hasWeapon(this.forcarSuprema) && this.weapons.length < MAX_WEAPONS) {
+      options[options.length - 1] = { kind: 'weapon', id: this.forcarSuprema, level: 1, weight: 1 };
+      this.forcarSuprema = null;
+    }
     if (!options.length) options = [{ kind: 'heal' }, { kind: 'gold' }];
     const parts = [];
     parts.push(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.65).setScrollFactor(0).setDepth(200).setInteractive());
@@ -1847,7 +1873,14 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(201));
     const n = options.length;
     options.forEach((o, i) => parts.push(...this.criarCarta(o, i, W / 2 + (i - (n - 1) / 2) * 250, H / 2 + 20)));
+    // a melhor escolha ganha o selo RECOMENDADO (src/ajudas.js); ajuda quem não lê as cartas
+    if (ajudasLigadas() && n > 1) {
+      const r = this.indiceRecomendado(options);
+      parts.push(...this.marcarRecomendada(W / 2 + (r - (n - 1) / 2) * 250, H / 2 + 20, 220, 270));
+      this.cartaRecomendada = r;
+    }
     this.modal = { kind: 'level', options, parts };
+    if (this.modo === 'prologo') this.eventoPrologo('carta');
   }
 
   // ---------- BAÚ: 3 BAÚS FECHADOS, O JOGADOR ESCOLHE UM ----------
@@ -1860,6 +1893,7 @@ class GameScene extends Phaser.Scene {
   }
   openChest() {
     tocarSom(this, 'bau');
+    if (this.modo === 'prologo') this.eventoPrologo('bau');
     this.pauseForModal();
     const doSubchefe = this.bausSubchefe > 0;
     if (doSubchefe) this.bausSubchefe--;
@@ -1919,7 +1953,7 @@ class GameScene extends Phaser.Scene {
       const w = m.combo;
       w.evolved = true;
       raridade = 'combo';
-      const novo = registrarCombo(SAVE, w.id);   // salvo para sempre, para todas as naves
+      const novo = this.modo !== 'prologo' && registrarCombo(SAVE, w.id);   // salvo para sempre (o prólogo não conta)
       if (novo) writeSave(SAVE);
       m.comboId = w.id; m.comboNovo = novo;
       this.cameras.main.flash(300, 240, 171, 252);
@@ -1991,6 +2025,7 @@ class GameScene extends Phaser.Scene {
   }
   hurt(d) {
     if (this.ended) return;
+    if (this.modo === 'prologo' && this.danoPrologo(d)) return;   // src/prologo.js decide (a nave só cai na nave-mãe)
     this.ultimoDanoTempo = this.elapsed;
     this.invuln = 0.5;
     this.hp -= d;
@@ -1998,6 +2033,7 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.shake(80, 0.006);
     this.player.setTint(0xff6666);
     this.time.delayedCall(120, () => { if (this.player.active) this.player.clearTint(); });
+    if (this.hp <= 0 && this.modo === 'prologo') { this.hp = 1; this.destruirEclipse(); return; }   // prólogo: a cena final
     if (this.hp <= 0) {
       this.boom(this.player.x, this.player.y, 30, 0xf97316);
       this.player.setVisible(false);

@@ -29,8 +29,11 @@ teste esconde o bug.
 - Texto que o jogador vê passa por tx('texto em português') e precisa de tradução
   nos 6 arquivos de src/idiomas/ (o teste idiomas.test.js aponta o que falta).
   Não use t() como nome: t já é variável local em vários lugares (tempo, tipo).
-- Modos: this.modo é 'campanha', 'infinito' ou 'arena' (init da partida). A arena
-  fica em src/arena.js; as naves rivais estão no grupo this.enemies com isRival.
+- Modos: this.modo é 'campanha', 'infinito', 'arena' ou 'prologo' (init da partida).
+  A arena fica em src/arena.js (rivais no grupo this.enemies com isRival); o prólogo em
+  src/prologo.js e não pode mexer no progresso (créditos, estatísticas, conquistas).
+- Os testes de navegador abrem com o prólogo já visto; use abrirJogo({ prologo: true })
+  para testar como jogador novo.
 - O dono é leigo: explique em português simples o que
   mudou e como testar no navegador.
 

@@ -11,6 +11,9 @@ const ART = {
   heal: ['..aaaa..', '..abba..', 'aaabbaaa', 'abbbbbba', 'abbbbbba', 'aaabbaaa', '..abba..', '..aaaa..'],
   coin: ['...aa...', '..abba..', '.abbbba.', 'abbccbba', 'abbccbba', 'abbbbbba', '.abbbba.', '..aaaa..'],
   magnet: ['cc....cc', 'ab....ba', 'ab....ba', 'ab....ba', 'abb..bba', '.abbbba.', '..aaaa..', '........'],
+  cadeado: ['..aaaa..', '.a....a.', '.a....a.', 'abbbbbba', 'abbccbba', 'abbccbba', 'abbbbbba', '.aaaaaa.'],
+  // mão do prólogo (dedo apontando para cima)
+  mao: ['...aa.....', '..abba....', '..abba....', '..abbaaa..', 'aaabbabbaa', 'abbabbabba', 'abbbbbbbba', 'abbbbbbbba', '.abbbbbbba', '.abbbbbba.', '..abbbbba.', '..aaaaaa..'],
   bomb: ['.....c..', '....c...', '..aaaa..', '.abbbba.', 'abbcbbba', 'abbbbbba', '.abbbba.', '..aaaa..'],
   congelar: ['..a..a..', 'a.abba.a', '.abbbba.', 'abbccbba', 'abbccbba', '.abbbba.', 'a.abba.a', '..a..a..'],
   lento: ['aaaaaaaa', '.abbbba.', '..abba..', '...cc...', '...cc...', '..abba..', '.abbbba.', 'aaaaaaaa'],

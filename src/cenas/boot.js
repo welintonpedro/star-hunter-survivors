@@ -44,6 +44,10 @@ class BootScene extends Phaser.Scene {
     pixelTexture(this, 'coin', ART.coin, { a: '#713f12', b: '#facc15', c: '#fef9c3' }, 3);
     pixelTexture(this, 'magnetItem', ART.magnet, { a: '#1e3a8a', b: '#3b82f6', c: '#e5e7eb' }, 3);
     pixelTexture(this, 'bomb', ART.bomb, { a: '#111827', b: '#374151', c: '#f97316' }, 3);
+    pixelTexture(this, 'ship_eclipse', ART_PROLOGO.shipEclipse, NAVE_PROLOGO.palette, 3);   // nave do prólogo
+    pixelTexture(this, 'entidade', ART_PROLOGO.entidade, CORES_ENTIDADE, 1);
+    pixelTexture(this, 'cadeado', ART.cadeado, { a: '#94a3b8', b: '#facc15', c: '#78350f' }, 1);
+    pixelTexture(this, 'mao', ART.mao, { a: '#1f2937', b: '#fde68a' }, 1);
     pixelTexture(this, 'congelar', ART.congelar, { a: '#bae6fd', b: '#38bdf8', c: '#ffffff' }, 3);
     pixelTexture(this, 'lento', ART.lento, { a: '#4c1d95', b: '#a78bfa', c: '#fde047' }, 3);
     pixelTexture(this, 'chamas', ART.chamas, { a: '#7c2d12', b: '#f97316', c: '#fde047' }, 3);
@@ -119,7 +123,9 @@ class BootScene extends Phaser.Scene {
     writeSave(SAVE);
     // pixel art nítida: todas as texturas geradas usam filtro "nearest" (textos usam o suave)
     this.textures.getTextureKeys().forEach((k) => this.textures.get(k).setFilter(Phaser.Textures.FilterMode.NEAREST));
-    this.scene.start('Hangar');
+    // quem nunca jogou começa pelo prólogo (RN-73); os outros vão direto ao menu
+    if (!PREFS.prologoVisto && STORAGE) this.scene.start('Game', { modo: 'prologo' });   // sem como salvar, não repete o prólogo toda vez
+    else this.scene.start('Hangar');
   }
 }
 

@@ -3,7 +3,7 @@
 const PREFS_KEY = 'star_hunter_survivors_config_v1';
 
 function lerPrefs() {
-  const padrao = { volume: 0.7, efeitosReduzidos: false, idioma: null };
+  const padrao = { volume: 0.7, efeitosReduzidos: false, idioma: null, prologoVisto: false, ajudas: true };
   try {
     const bruto = STORAGE && JSON.parse(STORAGE.getItem(PREFS_KEY) || 'null');
     if (!bruto || typeof bruto !== 'object') return padrao;
@@ -11,7 +11,9 @@ function lerPrefs() {
     return {
       volume: Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : padrao.volume,
       efeitosReduzidos: bruto.efeitosReduzidos === true,
-      idioma: typeof bruto.idioma === 'string' ? bruto.idioma : null   // null = detectar pelo navegador
+      idioma: typeof bruto.idioma === 'string' ? bruto.idioma : null,   // null = detectar pelo navegador
+      prologoVisto: bruto.prologoVisto === true,
+      ajudas: bruto.ajudas !== false
     };
   } catch (e) { return padrao; }
 }

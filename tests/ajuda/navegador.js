@@ -26,6 +26,7 @@ function iniciarServidor() {
 // opcoes.semStorage: simula navegador que não deixa salvar
 // opcoes.saveInicial: texto já guardado no localStorage antes de o jogo abrir
 // opcoes.busca: parte do link depois do "?" (ex.: "teste=1")
+// opcoes.prologo: true = jogador novo (abre no prólogo)
 async function abrirJogo(opcoes = {}) {
   const servidor = await iniciarServidor();
   const porta = servidor.address().port;
@@ -38,6 +39,16 @@ async function abrirJogo(opcoes = {}) {
   // o navegador de teste "fala" português, como o dono (ok do dono em 25/11/2026);
   // opcoes.idioma troca isso para testar a detecção automática de outros idiomas
   const idioma = opcoes.idioma || 'pt-BR';
+  // o navegador de teste finge que já viu o prólogo, para abrir no hangar como antes (ok do dono em 26/11/2026);
+  // opcoes.prologo = true abre como um jogador novo, que começa pelo prólogo
+  if (!opcoes.prologo) {
+    await pagina.evaluateOnNewDocument(() => {
+      try {
+        const k = 'star_hunter_survivors_config_v1', c = JSON.parse(localStorage.getItem(k) || '{}');
+        if (c.prologoVisto === undefined) { c.prologoVisto = true; localStorage.setItem(k, JSON.stringify(c)); }
+      } catch (e) { /* navegador sem localStorage (teste de save): segue */ }
+    });
+  }
   await pagina.evaluateOnNewDocument((l) => {
     Object.defineProperty(navigator, 'language', { get: () => l });
     Object.defineProperty(navigator, 'languages', { get: () => [l] });

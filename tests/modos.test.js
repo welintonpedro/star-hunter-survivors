@@ -46,6 +46,7 @@ test('hangar: JOGAR abre a escolha de modo (campanha, infinito, arena) e INFINIT
     const textos = await G(j.pagina, () => {
       const h = game.scene.getScene('Hangar');
       h.children.list.filter((o) => o.depth >= 1000).forEach((o) => o.destroy());   // fecha o menu inicial
+      SAVE.stats.tempoTotal = 60;   // já terminou 1 campanha: infinito e arena liberados (RN-74; ok do dono em 26/11)
       abrirEscolhaDeModo(h, 0);
       return h.children.list.filter((o) => o.type === 'Text').map((o) => o.text);
     });
