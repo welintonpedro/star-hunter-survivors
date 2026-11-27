@@ -64,6 +64,7 @@ Object.assign(GameScene.prototype, {
     pr.i++; pr.t = 0; pr.eventos = {};
     pr.mao.setVisible(false); this.tweens.killTweensOf(pr.mao); pr.mao.setScale(6);
     pr.setaHud.setVisible(false); this.tweens.killTweensOf(pr.setaHud);
+    pr.seta.setVisible(false);   // a seta do passo anterior (joia, baú, meteoro) não pode ficar parada no mapa
     pr.alvo = null;
     if (this.painelTeclas && this.painelTeclasAte === Infinity) this.esconderTeclas();
     const passo = ROTEIRO_PROLOGO[pr.i];

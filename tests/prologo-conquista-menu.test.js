@@ -123,3 +123,20 @@ test('modo teste: botão PRÓLOGO no hangar e botões para pular etapas dentro d
     assert.deepEqual(j.erros, []);
   } finally { await j.fechar(); }
 });
+
+test('Bug 27/11: a seta amarela do baú/meteoro some quando o passo do prólogo muda', async () => {
+  const j = await abrirJogo({ prologo: true });
+  try {
+    await esperarCena(j.pagina, 'Game');
+    const r = await G(j.pagina, () => {
+      const g = game.scene.getScene('Game');
+      g.pr.i = ROTEIRO_PROLOGO.findIndex((p) => p.id === 'pausa') - 1;   // o próximo passo é o da pausa
+      g.pr.seta.setVisible(true).setPosition(g.player.x + 300, g.player.y);   // seta que sobrou do meteoro
+      g.proximoPassoPrologo();
+      return { passo: g.passoAtual().id, seta: g.pr.seta.visible };
+    });
+    assert.equal(r.passo, 'pausa');
+    assert.equal(r.seta, false, 'seta do passo anterior não fica parada no mapa');
+    assert.deepEqual(j.erros, []);
+  } finally { await j.fechar(); }
+});
