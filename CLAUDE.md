@@ -23,6 +23,9 @@ teste esconde o bug.
   (pausa, fim, cena) chama pokiParado; toda volta ao jogo, pokiJogando. Sem o PokiSDK
   tudo vira "não faz nada". npm run poki gera dist-poki/ para enviar. NA_POKI = versão
   do Poki: sem modo de teste e sem tela cheia. Regras: docs do Poki em requirements-quality.
+- W e H (src/config.js) mudam conforme o aparelho (RN-88): 960×540 no computador, mais largo no
+  celular, mais alto no tablet. Posicione a interface a partir de W/H (W - 140, H / 2), nunca 960/540.
+  Os testes rodam em 960×540; para outro tamanho, mude o viewport e recarregue a página.
 - A chave do save é star_hunter_survivors_save_v1. Quem
   joga pelo link do GitHub Pages tem progresso nela; mudar
   o formato exige converter pela versão do save (RN-42),

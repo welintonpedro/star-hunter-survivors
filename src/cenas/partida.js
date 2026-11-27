@@ -79,6 +79,9 @@ class GameScene extends Phaser.Scene {
     this.addWeapon(ship.start);
 
     this.setupInput();
+    // estatística do Poki: começou uma partida (RN-87)
+    if (this.modo === 'prologo') pokiMedir('prologo', 'historia', 'start');
+    else pokiMedir('partida', this.modo + '_g' + (this.gi + 1), 'start');
     this.criarSetasChefe();   // antes do HUD: o minimapa enche a lista de alvos das setas
     this.createHUD();
     this.criarAjudasDeControle();   // botão MOVER no celular, teclas no computador (src/ajudas.js)
@@ -2150,6 +2153,7 @@ class GameScene extends Phaser.Scene {
       const novo = this.modo !== 'prologo' && registrarCombo(SAVE, w.id);   // salvo para sempre (o prólogo não conta)
       if (novo) writeSave(SAVE);
       m.comboId = w.id; m.comboNovo = novo;
+      pokiMedir('combo', w.id, novo ? 'discovered' : 'repeat');
       clarao(this, 300, 0xf0abfc);
     } else {
       for (let k = 0; k < c.melhorias; k++) {
@@ -2241,6 +2245,7 @@ class GameScene extends Phaser.Scene {
   // Chefe derrotado: solta um baú e créditos; não libera nave nem galáxia (RN-04)
   onBossDefeated(e) {
     const c = EVENTOS.chefes[e.chefe || 0];
+    pokiMedir('chefe', 'g' + (this.gi + 1) + '_chefe' + ((e.chefe || 0) + 1), this.modo === 'prologo' ? 'prologo' : 'complete');
     this.dropPickup(e.x, e.y, 'chest');
     const bonus = c.creditos * this.gal.rewardMult;
     this.bonus += bonus; this.runCredits += bonus;
@@ -2253,6 +2258,9 @@ class GameScene extends Phaser.Scene {
     if (this.ended) return;
     if (this.menuPausa) this.fecharPausa(true);
     this.ended = true;
+    // estatística do Poki: como a partida acabou (RN-87)
+    const venceu = reason === 'victory' || (reason === 'arena' && typeof this.rivaisVivos === 'function' && this.rivaisVivos() === 0 && this.hp > 0);
+    pokiMedir('partida', this.modo + '_g' + (this.gi + 1), reason === 'retreat' ? 'quit' : venceu ? 'complete' : 'fail');
     pokiParado();
     this.physics.pause();
     if (this.modal) { this.modal.parts.forEach((p) => p.destroy()); this.modal = null; }

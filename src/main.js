@@ -17,3 +17,9 @@ const config = {
 
 const game = new Phaser.Game(config);
 
+// Celular virou para "em pé" no meio da partida: pausa (a tela pede para deitar o aparelho, RN-88)
+window.addEventListener('resize', () => {
+  if (!(window.matchMedia && window.matchMedia('(orientation: portrait) and (pointer: coarse)').matches)) return;
+  const partida = game.scene.getScene('Game');
+  if (partida && partida.sys.isActive() && typeof partida.abrirPausa === 'function') partida.abrirPausa();
+});

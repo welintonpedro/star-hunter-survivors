@@ -28,7 +28,9 @@ test('RN-85 e RN-84: chefe de cada galáxia é maior, atira com o seu tiro e a s
         g.boss.setPosition(g.player.x + 900, g.player.y);   // longe: fora da tela
         g.boss.body.reset(g.player.x + 900, g.player.y);
       });
-      await esperar(5000);
+      // espera o primeiro tiro do chefe (no máximo 15 s: o navegador de teste às vezes fica lento)
+      await j.pagina.waitForFunction((tex) => { let achou = false; game.scene.getScene('Game').ebullets.children.iterate((t) => { if (t && t.active && t.texture.key === tex) achou = true; }); return achou; },
+        { timeout: 15000, polling: 100 }, tiros[gi]).catch(() => {});
       const r = await G(j.pagina, () => {
         const g = game.scene.getScene('Game'), b = g.boss, texs = new Set();
         g.ebullets.children.iterate((t) => { if (t && t.active) texs.add(t.texture.key); });

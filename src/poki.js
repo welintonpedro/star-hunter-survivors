@@ -39,10 +39,17 @@ function _pokiPronto() {
   }
   return POKI.pronto;
 }
-function _pokiChamar(nome) {
+function _pokiChamar(nome, ...args) {
   const sdk = _pokiSdk();
-  if (!sdk) return;
-  _pokiPronto().then(() => { try { sdk[nome](); } catch (e) { /* sem Poki: ignora */ } });
+  if (!sdk || typeof sdk[nome] !== 'function') return;
+  _pokiPronto().then(() => { try { sdk[nome](...args); } catch (e) { /* sem Poki: ignora */ } });
+}
+
+// Estatísticas para o Poki (RN-87): PokiSDK.measure(categoria, item, ação).
+// Ex.: pokiMedir('partida', 'campanha_g1', 'start'). Nomes curtos, sem acento, sempre os mesmos.
+// Sem Poki, não faz nada.
+function pokiMedir(categoria, item, acao) {
+  _pokiChamar('measure', String(categoria), String(item), String(acao));
 }
 
 // Fim do carregamento (fim da cena Boot)
@@ -118,4 +125,4 @@ function _travarRolagem() {
   window.addEventListener('wheel', (ev) => ev.preventDefault(), { passive: false });
 }
 
-if (typeof module !== 'undefined') module.exports = { pokiCarregou, pokiJogando, pokiParado, pokiIntervalo, POKI };
+if (typeof module !== 'undefined') module.exports = { pokiCarregou, pokiJogando, pokiParado, pokiIntervalo, pokiMedir, POKI };

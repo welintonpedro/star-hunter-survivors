@@ -429,6 +429,7 @@ Object.assign(GameScene.prototype, {
   terminarPrologo() {
     if (this.pr && this.pr.terminou) return;
     const viuAteOFim = !!(this.pr && this.pr.acabando);   // pulou a história? então não ganha a conquista
+    pokiMedir('prologo', 'historia', viuAteOFim ? 'complete' : 'skip');   // estatística do Poki (RN-87)
     if (this.pr) this.pr.terminou = true;
     PREFS.prologoVisto = true;
     salvarPrefs();
